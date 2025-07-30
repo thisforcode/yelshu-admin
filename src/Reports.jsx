@@ -88,7 +88,7 @@ function buildUserWisePivot(userWiseRows) {
   return result;
 }
 
-const Dashboard = () => {
+function Reports() {
   const [totalUsers, setTotalUsers] = useState(0);
   const [checkedInUsers, setCheckedInUsers] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -324,7 +324,7 @@ const Dashboard = () => {
 
   return (
     <div className="reports-page">
-      <h1>Dashboard</h1>
+      <h1>Reports</h1>
       <div className="tile-row">
         <div className="tile">
           <div className="tile-title">Total Registered Users</div>
@@ -364,4 +364,4 @@ const Dashboard = () => {
   );
 }
 
-export default Dashboard;
+export default Reports;

@@ -225,7 +225,11 @@ export default function Users() {
       const db = getDatabase();
       const usersRef = ref(db, 'users');
       for (const r of validRows) {
-        await push(usersRef, { ...r.row, status: 1 });
+        // Push user and get key
+        const newUserRef = await push(usersRef, { ...r.row, status: 1 });
+        const userId = newUserRef.key;
+        // Update the user with id field
+        await update(ref(db, `users/${userId}`), { id: userId });
       }
       setShowBulkModal(false);
       setBulkRows([]);
@@ -267,7 +271,9 @@ export default function Users() {
       } else {
         // Add user
         const usersRef = ref(db, 'users');
-        await push(usersRef, { ...newUser, status: 1 });
+        const newUserRef = await push(usersRef, { ...newUser, status: 1 });
+        const userId = newUserRef.key;
+        await update(ref(db, `users/${userId}`), { id: userId });
       }
       setShowAddModal(false);
       setEditUserId(null);
