@@ -50,6 +50,24 @@ const Dashboard = () => {
   const [pivotData, setPivotData] = useState({ rows: [], columns: [] });
   const [userWiseRows, setUserWiseRows] = useState([]);
   const [usersData, setUsersData] = useState({});
+  const [popover, setPopover] = useState({ visible: false, content: [], x: 0, y: 0 });
+
+  // Close popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (popover.visible) {
+        setPopover({ visible: false, content: [], x: 0, y: 0 });
+      }
+    };
+
+    if (popover.visible) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [popover.visible]);
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -112,10 +130,32 @@ const Dashboard = () => {
               const optFor = rec['opt-for'] || '';
               // Use 'id' field for join: users.id === tbl-optted.id
               const userId = rec['id'] || '';
+              const time = rec.time || rec['time'] || '';
               const key = userId + '||' + date + '||' + optFor;
               if (!userWiseMap[key]) {
-                userWiseMap[key] = { userId, date, optFor, count: 0 };
+                userWiseMap[key] = { userId, date, optFor, count: 0, time: '', allTimes: [] };
               }
+              
+              // Handle time data - can be string or object with indexed times
+              let timeArray = [];
+              if (typeof time === 'object' && time !== null) {
+                // Convert object with numeric keys to array
+                timeArray = Object.values(time).filter(t => t && typeof t === 'string');
+              } else if (typeof time === 'string' && time) {
+                timeArray = [time];
+              }
+              
+              // Merge with existing times and remove duplicates
+              userWiseMap[key].allTimes = [...new Set([...userWiseMap[key].allTimes, ...timeArray])];
+              
+              // Store the latest time for this combination
+              if (timeArray.length > 0) {
+                const latestTime = timeArray.sort().pop(); // Get the latest time
+                if (!userWiseMap[key].time || latestTime > userWiseMap[key].time) {
+                  userWiseMap[key].time = latestTime;
+                }
+              }
+              
               if (optFor === 'Beverages' && typeof rec.count === 'number') {
                 userWiseMap[key].count += rec.count;
               } else {
@@ -193,14 +233,12 @@ const Dashboard = () => {
     userWiseRows.forEach(row => {
       const key = row.userId + '||' + row.date;
       if (!pivotMap[key]) {
-        pivotMap[key] = { userId: row.userId, date: row.date, counts: {} };
+        pivotMap[key] = { userId: row.userId, date: row.date, counts: {}, allTimes: {} };
       }
-      // For Beverages, display the count of records (not sum of value)
-      if (row.optFor === 'Beverages') {
-        pivotMap[key].counts['Beverages'] = row.count;
-      } else {
-        pivotMap[key].counts[row.optFor] = row.count;
-      }
+      // Store count, last time, and all times for each option
+      const displayValue = row.time ? `${row.count}(${row.time})` : row.count.toString();
+      pivotMap[key].counts[row.optFor] = displayValue;
+      pivotMap[key].allTimes[row.optFor] = row.allTimes || [];
       optForSet.add(row.optFor);
     });
     const optForColumns = Array.from(optForSet).sort();
@@ -226,12 +264,28 @@ const Dashboard = () => {
         const line = [
           '"' + displayName.replace(/"/g, '""') + '"',
           formatDate(row.date),
-          ...optForColumns.map(optFor => row.counts[optFor] || 0)
+          ...optForColumns.map(optFor => row.counts[optFor] || '0')
         ];
         lines.push(line.join(','));
       });
       downloadCSV(lines.join('\r\n'), 'user_wise_pivot.csv');
     }
+    // Functions for popover
+    const showPopover = (event, times) => {
+      if (times && times.length > 0) {
+        setPopover({
+          visible: true,
+          content: times,
+          x: event.clientX,
+          y: event.clientY
+        });
+      }
+    };
+
+    const hidePopover = () => {
+      setPopover({ visible: false, content: [], x: 0, y: 0 });
+    };
+
     userWiseTableContent = (
       <div style={{ marginTop: 32 }}>
         <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -265,14 +319,60 @@ const Dashboard = () => {
                 <tr key={row.userId + row.date + idx}>
                   <td>{displayName}</td>
                   <td>{formatDate(row.date)}</td>
-                  {optForColumns.map(optFor => (
-                    <td key={optFor}>{row.counts[optFor] || 0}</td>
-                  ))}
+                  {optForColumns.map(optFor => {
+                    const cellValue = row.counts[optFor] || 0;
+                    const times = row.allTimes[optFor] || [];
+                    const hasMultipleTimes = times.length > 1;
+                    
+                    return (
+                      <td 
+                        key={optFor}
+                      >
+                        {cellValue}
+                        {hasMultipleTimes && (
+                          <span 
+                            className="info-icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (popover.visible) {
+                                hidePopover();
+                              } else {
+                                showPopover(e, times);
+                              }
+                            }}
+                            title="Click to see all times"
+                          >
+                            i
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}
           </tbody>
         </table>
+        
+        {/* Popover */}
+        {popover.visible && (
+          <div
+            className="time-popover"
+            style={{
+              left: popover.x + 10,
+              top: popover.y - 10
+            }}
+          >
+            <div className="popover-title">
+              All Times ({popover.content.length})
+            </div>
+            {popover.content.sort().map((time, idx) => (
+              <div key={idx} className="time-item">
+                {time}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

@@ -7,8 +7,8 @@ import logo from './assets/logo.jpeg';
 
 
 function Login({ onLogin }) {
-  const [email, setEmail] = useState('admin25@hrtc.com');
-  const [password, setPassword] = useState('2025@Hrtc#');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
