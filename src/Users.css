@@ -1,0 +1,197 @@
+.users-container {
+  background: #fff;
+  border-radius: 18px;
+  margin: 32px 24px;
+  padding: 32px 32px 24px 32px;
+  box-shadow: 0 2px 16px 0 rgba(0,0,0,0.06);
+}
+
+.users-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.users-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.users-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.users-upload-btn {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.users-upload-btn:hover {
+  background: #f3f4f6;
+}
+
+.users-add-btn {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.users-add-btn:hover {
+  background: #1d4ed8;
+}
+
+.users-table-wrapper {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px 0 rgba(0,0,0,0.04);
+  overflow-x: auto;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 1.05rem;
+}
+
+.users-table th, .users-table td {
+  padding: 18px 16px;
+  text-align: left;
+}
+
+.users-table th {
+  font-weight: 700;
+  background: #f9fafb;
+}
+
+.users-table tr:not(:last-child) {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.users-actions-icons {
+  display: flex;
+  gap: 16px;
+  color: #2563eb;
+  font-size: 1.2rem;
+}
+
+.icon {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.icon:hover {
+  color: #1d4ed8;
+}
+
+.users-pagination {
+  text-align: right;
+  color: #6b7280;
+  font-size: 1rem;
+  padding: 12px 16px 0 0;
+}
+
+/* Modal styles for Add User */
+.users-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.users-modal {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.18);
+  padding: 32px 28px 24px 28px;
+  min-width: 340px;
+  max-width: 90vw;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+}
+
+.users-modal h2 {
+  margin-top: 0;
+  margin-bottom: 18px;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.users-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.users-modal-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.users-modal-form input {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.users-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.users-modal-actions button {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.users-modal-actions button[type="button"] {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.users-modal-actions button[type="button"]:hover {
+  background: #d1d5db;
+}
+
+.users-modal-actions button[type="submit"] {
+  background: #2563eb;
+  color: #fff;
+}
+
+.users-modal-actions button[type="submit"]:hover {
+  background: #1d4ed8;
+}

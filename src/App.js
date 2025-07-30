@@ -3,8 +3,11 @@
 import './App.css';
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
 import Login from './Login';
 import Dashboard from './Dashboard';
+import Users from './Users';
+import SidebarLayout from './SidebarLayout';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -38,11 +41,10 @@ function App() {
             <Login onLogin={handleLogin} />
           </PublicRoute>
         } />
-        <Route path="/dashboard" element={
-          <PrivateRoute>
-            <Dashboard onLogout={handleLogout} />
-          </PrivateRoute>
-        } />
+        <Route element={<PrivateRoute><SidebarLayout onLogout={handleLogout} /></PrivateRoute>}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/users" element={<Users />} />
+        </Route>
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
       </Routes>
     </Router>
