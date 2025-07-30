@@ -1,37 +1,51 @@
 
-import logo from './logo.svg';
+
 import './App.css';
 import React, { useState } from 'react';
-import { auth } from './firebase';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Login';
-
+import Dashboard from './Dashboard';
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const u = sessionStorage.getItem('user');
+    return u ? JSON.parse(u) : null;
+  });
 
-  const handleLogin = (user) => {
-    setUser(user);
+  const handleLogin = (userObj) => {
+    setUser(userObj);
+    sessionStorage.setItem('user', JSON.stringify(userObj));
   };
 
   const handleLogout = () => {
-    auth.signOut();
     setUser(null);
+    sessionStorage.removeItem('user');
   };
 
+  function PrivateRoute({ children }) {
+    return user ? children : <Navigate to="/login" replace />;
+  }
+
+  function PublicRoute({ children }) {
+    return !user ? children : <Navigate to="/dashboard" replace />;
+  }
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        {user ? (
-          <>
-            <p>Welcome, {user.email}!</p>
-            <button onClick={handleLogout}>Logout</button>
-          </>
-        ) : (
-          <Login onLogin={handleLogin} />
-        )}
-      </header>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/login" element={
+          <PublicRoute>
+            <Login onLogin={handleLogin} />
+          </PublicRoute>
+        } />
+        <Route path="/dashboard" element={
+          <PrivateRoute>
+            <Dashboard onLogout={handleLogout} />
+          </PrivateRoute>
+        } />
+        <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
+      </Routes>
+    </Router>
   );
 }
 

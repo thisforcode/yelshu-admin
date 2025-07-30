@@ -1,0 +1,128 @@
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.sidebar {
+  width: 260px;
+  background: #16233a;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: 0 2px 16px #0001;
+}
+
+.sidebar-title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 36px 0 24px 0;
+  text-align: center;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 1.1rem;
+  padding: 14px 28px;
+  color: #e2e8f0;
+  text-decoration: none;
+  border-radius: 10px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.nav-item .nav-icon {
+  font-size: 1.2rem;
+  width: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-item.active, .nav-item:hover {
+  background: #22325a;
+  color: #fff;
+}
+
+.main-content {
+  flex: 1;
+  padding: 40px 48px 32px 48px;
+  background: #fff;
+  border-radius: 0;
+  margin: 16px 16px 16px 24px;
+  box-shadow: 0 2px 16px #0001;
+  min-width: 0;
+}
+
+.dashboard-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 32px;
+  color: #16233a;
+}
+
+.dashboard-cards {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 36px;
+}
+
+.dashboard-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px #0001;
+  padding: 28px 36px;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+}
+
+.card-label {
+  font-size: 1.1rem;
+  color: #555;
+  font-weight: 500;
+}
+
+.card-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #16233a;
+}
+
+.event-overview-section {
+  margin-top: 18px;
+  background: #fcfcfd;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px #0001;
+  padding: 28px 32px 24px 32px;
+}
+
+.event-overview-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 18px;
+  color: #16233a;
+}
+
+.event-overview-chart {
+  width: 100%;
+  min-width: 320px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
