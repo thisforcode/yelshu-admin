@@ -16,7 +16,7 @@ export default function SidebarLayout({ onLogout }) {
           <Link className={`nav-item${location.pathname === '/dashboard' ? ' active' : ''}`} to="/dashboard"><span className="nav-icon"><i className="fas fa-home"></i></span>Dashboard</Link>
           <Link className={`nav-item${location.pathname === '/users' ? ' active' : ''}`} to="/users"><span className="nav-icon"><i className="fas fa-users"></i></span>Users</Link>
           <Link className={`nav-item${location.pathname === '/bulk-qr-generator' ? ' active' : ''}`} to="/bulk-qr-generator"><span className="nav-icon"><i className="fas fa-th"></i></span>Bulk QR Generator</Link>
-          <span className="nav-item"><span className="nav-icon"><i className="fas fa-chart-bar"></i></span>Reports</span>
+          <Link className={`nav-item${location.pathname === '/reports' ? ' active' : ''}`} to="/reports"><span className="nav-icon"><i className="fas fa-chart-bar"></i></span>Reports</Link>
         </nav>
       </aside>
       <main className="main-content">

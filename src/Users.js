@@ -1,6 +1,6 @@
 import './Users.css';
 import { useEffect, useState } from 'react';
-import { getDatabase, ref, query, orderByKey, limitToFirst, startAt, push, update, get } from 'firebase/database';
+import { getDatabase, ref, query, orderByKey, push, update, get } from 'firebase/database';
 import '../src/firebase';
 import { QRCodeCanvas } from 'qrcode.react';
 
@@ -13,7 +13,7 @@ export default function Users() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  const [lastKey, setLastKey] = useState(null);
+  // const [lastKey, setLastKey] = useState(null); // Removed unused state
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', mobile: '', guestType: '', status: 1 });
