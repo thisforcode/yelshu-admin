@@ -1,11 +1,20 @@
 import './Users.css';
 import { useEffect, useState } from 'react';
-import { getDatabase, ref, onValue, push, update } from 'firebase/database';
+import { getDatabase, ref, query, orderByKey, limitToFirst, startAt, push, update, get } from 'firebase/database';
 import '../src/firebase';
 import { QRCodeCanvas } from 'qrcode.react';
 
+import Papa from 'papaparse';
+
 export default function Users() {
   const [usersData, setUsersData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [lastKey, setLastKey] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', mobile: '', guestType: '', status: 1 });
   const [formError, setFormError] = useState('');
@@ -14,23 +23,66 @@ export default function Users() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrUserId, setQrUserId] = useState(null);
 
+  // Bulk upload states
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkRows, setBulkRows] = useState([]); // {row, errors, isValid, originalIdx}
+  const [bulkInvalidCount, setBulkInvalidCount] = useState(0);
+  const [bulkUploading, setBulkUploading] = useState(false);
+
+  // Fetch total count (for pagination)
   useEffect(() => {
     const db = getDatabase();
     const usersRef = ref(db, 'users');
-    const unsubscribe = onValue(usersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        // Convert object to array and filter by status === 1
-        const usersArray = Object.entries(data)
+    const fetchCount = async () => {
+      const snap = await get(usersRef);
+      if (snap.exists()) {
+        const data = snap.val();
+        const arr = Object.values(data).filter((user) => user.status === 1 || user.status === '1');
+        setTotalCount(arr.length);
+      } else {
+        setTotalCount(0);
+      }
+    };
+    fetchCount();
+  }, []);
+
+  // Fetch paginated users from Firebase
+  useEffect(() => {
+    setLoading(true);
+    const db = getDatabase();
+    let usersQuery = query(ref(db, 'users'), orderByKey());
+    // For pagination, calculate startAt key
+    // Firebase Realtime DB does not support offset, so we fetch (page * pageSize) and slice
+    const fetchUsers = async () => {
+      const snap = await get(usersQuery);
+      if (snap.exists()) {
+        let data = snap.val();
+        let arr = Object.entries(data)
           .map(([id, user]) => ({ id, ...user }))
           .filter((user) => user.status === 1 || user.status === '1');
-        setUsersData(usersArray);
+        // Search filter
+        if (searchTerm.trim()) {
+          const term = searchTerm.trim().toLowerCase();
+          arr = arr.filter(user =>
+            (user.name && user.name.toLowerCase().includes(term)) ||
+            (user.email && user.email.toLowerCase().includes(term)) ||
+            (user.mobile && user.mobile.toLowerCase().includes(term)) ||
+            (user.guestType && user.guestType.toLowerCase().includes(term))
+          );
+        }
+        setTotalCount(arr.length);
+        // Pagination
+        const startIdx = (page - 1) * pageSize;
+        const paged = arr.slice(startIdx, startIdx + pageSize);
+        setUsersData(paged);
       } else {
         setUsersData([]);
+        setTotalCount(0);
       }
-    });
-    return () => unsubscribe();
-  }, []);
+      setLoading(false);
+    };
+    fetchUsers();
+  }, [page, pageSize, searchTerm]);
 
   // Handler for opening add user modal
   const handleAddUserClick = () => {
@@ -77,6 +129,112 @@ export default function Users() {
   const validateMobile = (mobile) => {
     // Only 10 digits, mandatory
     return /^\d{10}$/.test(mobile);
+  };
+
+  // Bulk row validation
+  const validateBulkRow = (row) => {
+    const errors = {};
+    if (!row.name || !row.name.trim()) errors.name = 'Name is required.';
+    if (!row.mobile || !row.mobile.trim()) errors.mobile = 'Mobile is required.';
+    else if (!validateMobile(row.mobile.trim())) errors.mobile = 'Invalid mobile.';
+    if (row.email && !validateEmail(row.email.trim())) errors.email = 'Invalid email.';
+    return errors;
+  };
+
+  // Handle Bulk Upload button click
+  const handleBulkUploadClick = () => {
+    console.log('Bulk Upload Clicked');
+    setShowBulkModal(true);
+    setBulkRows([]);
+    setBulkInvalidCount(0);
+    setBulkUploading(false);
+  };
+
+  // Handle CSV file input
+  const handleBulkFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const rows = results.data.map((row, idx) => {
+          // Normalize keys
+          const normalized = {
+            name: row.name || row.Name || '',
+            email: row.email || row.Email || '',
+            mobile: row.mobile || row.Mobile || '',
+            guestType: row.guestType || row.GuestType || '',
+            status: 1
+          };
+          const errors = validateBulkRow(normalized);
+          return {
+            row: normalized,
+            errors,
+            isValid: Object.keys(errors).length === 0,
+            originalIdx: idx
+          };
+        });
+        const invalidCount = rows.filter(r => !r.isValid).length;
+        setBulkRows(rows);
+        setBulkInvalidCount(invalidCount);
+      },
+      error: () => {
+        alert('Failed to parse CSV.');
+      }
+    });
+  };
+
+  // Handle edit in bulk table
+  const handleBulkEdit = (idx, field, value) => {
+    setBulkRows(prev => {
+      const updated = [...prev];
+      const rowObj = { ...updated[idx].row, [field]: value };
+      const errors = validateBulkRow(rowObj);
+      updated[idx] = {
+        ...updated[idx],
+        row: rowObj,
+        errors,
+        isValid: Object.keys(errors).length === 0
+      };
+      const invalidCount = updated.filter(r => !r.isValid).length;
+      setBulkInvalidCount(invalidCount);
+      return updated;
+    });
+  };
+
+  // Remove row from bulk table
+  const handleBulkRemove = (idx) => {
+    setBulkRows(prev => {
+      const updated = prev.filter((_, i) => i !== idx);
+      const invalidCount = updated.filter(r => !r.isValid).length;
+      setBulkInvalidCount(invalidCount);
+      return updated;
+    });
+  };
+
+  // Submit valid rows to Firebase
+  const handleBulkSubmit = async () => {
+    setBulkUploading(true);
+    const validRows = bulkRows.filter(r => r.isValid);
+    if (validRows.length === 0) {
+      setBulkUploading(false);
+      return;
+    }
+    try {
+      const db = getDatabase();
+      const usersRef = ref(db, 'users');
+      for (const r of validRows) {
+        await push(usersRef, { ...r.row, status: 1 });
+      }
+      setShowBulkModal(false);
+      setBulkRows([]);
+      setBulkInvalidCount(0);
+    } catch (err) {
+      alert('Failed to upload users.');
+    } finally {
+      setBulkUploading(false);
+    }
   };
 
   // Handler for submitting new user or editing user
@@ -148,9 +306,18 @@ export default function Users() {
       <div className="users-header-row">
         <h1 className="users-title">Admin Dashboard</h1>
         <div className="users-actions">
-          <button className="users-upload-btn">Buik Upload CSV</button>
+          <button className="users-upload-btn" onClick={handleBulkUploadClick}>Bulk Upload CSV</button>
           <button className="users-add-btn" onClick={handleAddUserClick}>Add User</button>
         </div>
+      </div>
+      <div style={{ margin: '16px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <input
+          type="text"
+          placeholder="Search users..."
+          value={searchTerm}
+          onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
+          style={{ padding: 8, minWidth: 220, borderRadius: 4, border: '1px solid #ccc' }}
+        />
       </div>
       <div className="users-table-wrapper">
         <table className="users-table">
@@ -164,7 +331,9 @@ export default function Users() {
             </tr>
           </thead>
           <tbody>
-            {usersData.length === 0 ? (
+            {loading ? (
+              <tr><td colSpan="5" style={{ textAlign: 'center' }}>Loading...</td></tr>
+            ) : usersData.length === 0 ? (
               <tr><td colSpan="5" style={{ textAlign: 'center' }}>No users found</td></tr>
             ) : (
               usersData.map((user, idx) => (
@@ -183,7 +352,20 @@ export default function Users() {
             )}
           </tbody>
         </table>
-        <div className="users-pagination">{usersData.length > 0 ? `1–${usersData.length} of ${usersData.length}` : '0–0 of 0'}</div>
+        <div className="users-pagination" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+          <div>
+            {totalCount > 0 ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalCount)} of ${totalCount}` : '0–0 of 0'}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1 || loading}>Prev</button>
+            <span>Page {page}</span>
+            <button onClick={() => setPage(p => (p * pageSize < totalCount ? p + 1 : p))} disabled={page * pageSize >= totalCount || loading}>Next</button>
+            <span style={{ marginLeft: 16 }}>Rows per page:</span>
+            <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} disabled={loading}>
+              {[5, 10, 20, 50].map(sz => <option key={sz} value={sz}>{sz}</option>)}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Add User Modal */}
@@ -218,6 +400,78 @@ export default function Users() {
         </div>
       )}
 
+      {/* Bulk Upload Modal */}
+      {showBulkModal && (
+        <div className="users-modal-overlay">
+          <div className="users-modal" style={{ minWidth: 600, maxWidth: 900 }}>
+            <h2>Bulk Upload Users (CSV)</h2>
+            {bulkRows.length === 0 ? (
+              <>
+                <input className="bulk-upload-file" type="file" accept=".csv" onChange={handleBulkFileChange} />
+                <div className="bulk-upload-info">
+                  CSV columns: <b>name</b>, <b>email</b>, <b>mobile</b>, <b>guestType</b>
+                </div>
+                <div className="users-modal-actions" style={{ marginTop: 24 }}>
+                  <button type="button" onClick={() => setShowBulkModal(false)} disabled={bulkUploading}>Cancel</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="bulk-upload-summary">
+                  {bulkInvalidCount > 0 ? (
+                    <span style={{ color: 'red' }}>{bulkInvalidCount} invalid record{bulkInvalidCount > 1 ? 's' : ''} (highlighted below)</span>
+                  ) : (
+                    <span style={{ color: 'green' }}>All records valid</span>
+                  )}
+                </div>
+                <div style={{ maxHeight: 350, overflow: 'auto', border: '1px solid #eee', borderRadius: 6 }}>
+                  <table className="bulk-upload-table" style={{ minWidth: 600, width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Mobile</th>
+                        <th>Guest Type</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkRows.map((r, idx) => (
+                        <tr key={idx} className={r.isValid ? '' : 'invalid-row'}>
+                          <td>
+                            <input type="text" value={r.row.name} onChange={e => handleBulkEdit(idx, 'name', e.target.value)} className="bulk-upload-input" style={r.errors.name ? { borderColor: 'red' } : {}} />
+                            {r.errors.name && <div style={{ color: 'red', fontSize: 12 }}>{r.errors.name}</div>}
+                          </td>
+                          <td>
+                            <input type="email" value={r.row.email} onChange={e => handleBulkEdit(idx, 'email', e.target.value)} className="bulk-upload-input" style={r.errors.email ? { borderColor: 'red' } : {}} />
+                            {r.errors.email && <div style={{ color: 'red', fontSize: 12 }}>{r.errors.email}</div>}
+                          </td>
+                          <td>
+                            <input type="text" value={r.row.mobile} onChange={e => handleBulkEdit(idx, 'mobile', e.target.value)} className="bulk-upload-input" style={r.errors.mobile ? { borderColor: 'red' } : {}} maxLength={10} />
+                            {r.errors.mobile && <div style={{ color: 'red', fontSize: 12 }}>{r.errors.mobile}</div>}
+                          </td>
+                          <td>
+                            <input type="text" value={r.row.guestType} onChange={e => handleBulkEdit(idx, 'guestType', e.target.value)} className="bulk-upload-input" />
+                          </td>
+                          <td>
+                            <button type="button" onClick={() => handleBulkRemove(idx)}>Remove</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="users-modal-actions" style={{ marginTop: 18 }}>
+                  <button type="button" onClick={() => setShowBulkModal(false)} disabled={bulkUploading}>Cancel</button>
+                  <button type="button" onClick={handleBulkSubmit} disabled={bulkUploading || bulkRows.filter(r => r.isValid).length === 0}>
+                    {bulkUploading ? 'Uploading...' : `Save ${bulkRows.filter(r => r.isValid).length} Valid User(s)`}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {/* QR Code Modal */}
       {showQRModal && (
         <div className="users-modal-overlay">

@@ -3,6 +3,7 @@
 import './App.css';
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import BulkQRGenerator from './BulkQRGenerator';
 
 import Login from './Login';
 import Dashboard from './Dashboard';
@@ -44,6 +45,7 @@ function App() {
         <Route element={<PrivateRoute><SidebarLayout onLogout={handleLogout} /></PrivateRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/users" element={<Users />} />
+          <Route path="/bulk-qr-generator" element={<BulkQRGenerator />} />
         </Route>
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
       </Routes>
