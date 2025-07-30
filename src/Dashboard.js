@@ -18,20 +18,6 @@ function pivotDataToCSV(pivotData) {
 }
 
 // Helper to convert user-wise data to CSV
-function userWiseDataToCSV(userWiseRows) {
-  if (!userWiseRows || userWiseRows.length === 0) return '';
-  const headers = ['User Name', 'Date', 'Opt-for', 'Count'];
-  const lines = [headers.join(',')];
-  userWiseRows.forEach(row => {
-    lines.push([
-      row.userName,
-      formatDate(row.date),
-      row.optFor,
-      row.count
-    ].join(','));
-  });
-  return lines.join('\r\n');
-}
 
 // Helper to trigger CSV download
 function downloadCSV(csv, filename = 'opted_users.csv') {
@@ -55,38 +41,7 @@ function formatDate(dateStr) {
 }
 
 // Helper to build user-wise pivot data for table
-function buildUserWisePivot(userWiseRows) {
-  const userMap = {};
-  userWiseRows.forEach(row => {
-    if (!userMap[row.userName]) userMap[row.userName] = [];
-    userMap[row.userName].push(row);
-  });
-  const result = {};
-  Object.entries(userMap).forEach(([userName, rows]) => {
-    const dateSet = new Set();
-    const optForSet = new Set();
-    rows.forEach(r => {
-      dateSet.add(r.date);
-      optForSet.add(r.optFor);
-    });
-    const dates = Array.from(dateSet).sort((a, b) => new Date(b) - new Date(a));
-    const optFors = Array.from(optForSet).sort();
-    const pivot = {};
-    rows.forEach(r => {
-      if (!pivot[r.date]) pivot[r.date] = {};
-      pivot[r.date][r.optFor] = r.count;
-    });
-    const tableRows = dates.map(date => {
-      const row = { date };
-      optFors.forEach(optFor => {
-        row[optFor] = pivot[date] && pivot[date][optFor] ? pivot[date][optFor] : 0;
-      });
-      return row;
-    });
-    result[userName] = { rows: tableRows, columns: optFors };
-  });
-  return result;
-}
+// ...existing code...
 
 const Dashboard = () => {
   const [totalUsers, setTotalUsers] = useState(0);

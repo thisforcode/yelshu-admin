@@ -47,7 +47,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/users" element={<Users />} />
           <Route path="/bulk-qr-generator" element={<BulkQRGenerator />} />
-// ...existing code...
+{/* ...existing code... */}
         </Route>
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
       </Routes>
