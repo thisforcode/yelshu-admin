@@ -1,8 +1,8 @@
-
 import './Users.css';
 import { useEffect, useState } from 'react';
 import { getDatabase, ref, onValue, push, update } from 'firebase/database';
 import '../src/firebase';
+import { QRCodeCanvas } from 'qrcode.react';
 
 export default function Users() {
   const [usersData, setUsersData] = useState([]);
@@ -11,6 +11,8 @@ export default function Users() {
   const [formError, setFormError] = useState('');
   const [adding, setAdding] = useState(false);
   const [editUserId, setEditUserId] = useState(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrUserId, setQrUserId] = useState(null);
 
   useEffect(() => {
     const db = getDatabase();
@@ -131,6 +133,16 @@ export default function Users() {
     }
   };
 
+  // Handler for QR code modal
+  const handleShowQR = (userId) => {
+    setQrUserId(userId);
+    setShowQRModal(true);
+  };
+  const handleCloseQR = () => {
+    setShowQRModal(false);
+    setQrUserId(null);
+  };
+
   return (
     <div className="users-container">
       <div className="users-header-row">
@@ -163,7 +175,7 @@ export default function Users() {
                   <td>{user.guestType}</td>
                   <td className="users-actions-icons">
                     <span className="icon edit" title="Edit" onClick={() => handleEditUserClick(user)}>✏️</span>
-                    <span className="icon qr" title="QR">#️⃣</span>
+                    <span className="icon qr" title="QR" onClick={() => handleShowQR(user.id)} style={{ cursor: 'pointer' }}>#️⃣</span>
                     <span className="icon delete" title="Delete" onClick={() => handleDeleteUser(user.id)}>🗑️</span>
                   </td>
                 </tr>
@@ -202,6 +214,43 @@ export default function Users() {
                 <button type="submit" disabled={adding}>{adding ? (editUserId ? 'Saving...' : 'Adding...') : (editUserId ? 'Save Changes' : 'Add User')}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Modal */}
+      {showQRModal && (
+        <div className="users-modal-overlay">
+          <div className="users-modal" style={{ textAlign: 'center', minWidth: 320 }}>
+            <h2>User QR Code</h2>
+            <div style={{ margin: '20px 0', position: 'relative', display: 'inline-block', width: 200, height: 200 }}>
+              {qrUserId && (
+                <>
+                  <QRCodeCanvas value={qrUserId} size={200} style={{ display: 'block' }} />
+                  <img 
+                    src={require('./assets/logo.jpeg')} 
+                    alt="Logo" 
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: 44,
+                      height: 44,
+                      borderRadius: '8px',
+                      objectFit: 'contain',
+                      background: '#fff',
+                      padding: 2,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                      zIndex: 2
+                    }}
+                  />
+                </>
+              )}
+            </div>
+            <div className="users-modal-actions">
+              <button type="button" onClick={handleCloseQR}>Close</button>
+            </div>
           </div>
         </div>
       )}
