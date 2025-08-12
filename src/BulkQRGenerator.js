@@ -68,8 +68,21 @@ const BulkQRGenerator = () => {
       for (const user of userArr) {
         const qrData = user.id;
         const name = user.name || user.id;
-        const fontSize = 36;
+        const maxFontSize = 36;
+        const minFontSize = 16;
         const padding = 24;
+        let fontSize = maxFontSize;
+        // Create a temp canvas for measuring text width
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.font = `bold ${fontSize}px Arial, sans-serif`;
+        let textWidth = tempCtx.measureText(name).width;
+        // Reduce font size until text fits within (qrSize - 32px) or minFontSize
+        while (textWidth > qrSize - 32 && fontSize > minFontSize) {
+          fontSize -= 1;
+          tempCtx.font = `bold ${fontSize}px Arial, sans-serif`;
+          textWidth = tempCtx.measureText(name).width;
+        }
         const nameHeight = fontSize + padding;
         const canvas = document.createElement('canvas');
         canvas.width = qrSize;
@@ -127,7 +140,6 @@ const BulkQRGenerator = () => {
         ctx.font = `bold ${fontSize}px Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        ctx.fillStyle = '#222';
         // White background for text
         ctx.fillStyle = '#fff';
         ctx.fillRect(0, qrSize, qrSize, nameHeight);
