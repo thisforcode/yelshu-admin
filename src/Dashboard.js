@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTenant } from './TenantContext';
 import { createTenantDataService } from './services/TenantDataService';
-import FirestoreDebug from './FirestoreDebug';
 import './Reports.css';
 import './NoEventSelected.css';
 
@@ -400,8 +399,7 @@ const Dashboard = () => {
         </div>
       </div>
       
-      {/* Firestore Debug Component - Temporary */}
-      <FirestoreDebug />
+  {/* Firestore debug UI removed in production */}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, enableNetwork, disableNetwork } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
 
 // Your web app's Firebase configuration from environment variables
@@ -43,20 +43,6 @@ export const db = getFirestore(app);
 // Initialize Realtime Database
 export const realtimeDb = getDatabase(app);
 
-// Handle network state changes
-const handleConnectionState = () => {
-  window.addEventListener('online', () => {
-    console.log('Network back online, enabling Firestore');
-    enableNetwork(db).catch(console.error);
-  });
-  
-  window.addEventListener('offline', () => {
-    console.log('Network offline, disabling Firestore');
-    disableNetwork(db).catch(console.error);
-  });
-};
-
-// Initialize connection handling
-if (typeof window !== 'undefined') {
-  handleConnectionState();
-}
+// Note: removed Firestore network debug handlers to avoid noisy logs and unexpected
+// network toggles in production. Firestore will manage offline persistence/network
+// automatically via the SDK.

@@ -2,6 +2,8 @@
 
 import './App.css';
 import React, { useState } from 'react';
+import { signOut } from 'firebase/auth';
+import { auth } from './firebase';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { TenantProvider, useTenant } from './TenantContext';
 
@@ -26,7 +28,14 @@ function AppContent() {
     sessionStorage.setItem('user', JSON.stringify(userObj));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // Sign out from Firebase to ensure auth state changes propagate to TenantContext
+      await signOut(auth);
+    } catch (err) {
+      console.error('Error signing out:', err);
+    }
+    // Clear local session state regardless
     setUser(null);
     sessionStorage.removeItem('user');
   };
