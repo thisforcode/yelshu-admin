@@ -1,3 +1,78 @@
+/* Migration Notice */
+.migration-notice {
+  background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+  border: 1px solid #fdba74;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 4px 16px rgba(251, 146, 60, 0.15);
+}
+
+.migration-icon {
+  font-size: 2.5rem;
+  color: #ea580c;
+  flex-shrink: 0;
+}
+
+.migration-content {
+  flex: 1;
+}
+
+.migration-content h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #9a3412;
+  margin: 0 0 8px 0;
+}
+
+.migration-content p {
+  color: #c2410c;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+}
+
+.migrate-btn {
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.migrate-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(234, 88, 12, 0.3);
+}
+
+.migrate-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Bulk Upload Modal Table & Inputs */
 .bulk-upload-table input[type="text"],
 .bulk-upload-table input[type="email"],

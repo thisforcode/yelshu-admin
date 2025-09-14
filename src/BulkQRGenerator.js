@@ -1,34 +1,39 @@
 import React, { useState } from 'react';
 import './BulkQRGenerator.css';
-import { getDatabase, ref, get } from 'firebase/database';
+import './NoEventSelected.css';
+import { useTenant } from './TenantContext';
+import { createTenantDataService } from './services/TenantDataService';
 import QRCode from 'qrcode';
 import logo from './assets/logo.jpeg';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
 const BulkQRGenerator = () => {
+  const { tenantId, selectedEventId } = useTenant();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [migrationNeeded, setMigrationNeeded] = useState(false);
 
   const handleGenerateAndDownload = async () => {
+    if (!tenantId || !selectedEventId) return;
+    
     setLoading(true);
     setError('');
     setSuccess('');
     try {
-      // Fetch all users from Firebase
-      const db = getDatabase();
-      const usersRef = ref(db, 'users');
-      const snap = await get(usersRef);
-      if (!snap.exists()) {
-        setError('No users found.');
+      // Fetch all users from tenant service for the selected event
+      const tenantService = createTenantDataService(tenantId);
+      const users = await tenantService.getUsers(selectedEventId);
+      
+      if (users.length === 0) {
+        setError('No users found for the selected event.');
         setLoading(false);
         return;
       }
-      const users = snap.val();
-      const userArr = Object.entries(users)
-        .filter(([id, user]) => user.status === 1 || user.status === '1')
-        .map(([id, user]) => ({ id, ...user }));
+      
+      setMigrationNeeded(false);
+      const userArr = users; // users are already filtered and formatted
       if (userArr.length === 0) {
         setError('No active users found.');
         setLoading(false);
@@ -157,15 +162,83 @@ const BulkQRGenerator = () => {
       saveAs(zipBlob, 'bulk-qr-codes.zip');
       setSuccess(`Successfully generated and downloaded ${userArr.length} QR codes.`);
     } catch (err) {
-      setError('Failed to generate QR codes. ' + (err.message || ''));
+      console.error('Error generating QR codes:', err);
+      if (err.message?.includes('Failed to fetch users')) {
+        setMigrationNeeded(true);
+        setError('No tenant data found. Please migrate your data first.');
+      } else {
+        setError('Failed to generate QR codes. ' + (err.message || ''));
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleMigrateData = async () => {
+    if (!tenantId) return;
+    
+    try {
+      setLoading(true);
+      setError('');
+      const tenantService = createTenantDataService(tenantId);
+      await tenantService.migrateExistingData();
+      
+      setMigrationNeeded(false);
+      setSuccess('Data migrated successfully! You can now generate QR codes.');
+    } catch (error) {
+      console.error('Error migrating data:', error);
+      setError('Failed to migrate data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!selectedEventId) {
+    return (
+      <div className="bulk-qr-generator-container">
+        <h2>Bulk QR Generator</h2>
+        <div className="no-event-selected">
+          <div className="no-event-icon">
+            <i className="fas fa-calendar-times"></i>
+          </div>
+          <div className="no-event-content">
+            <h3>No Event Selected</h3>
+            <p>Please select an event from the header dropdown to generate QR codes for users.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bulk-qr-generator-container">
       <h2>Bulk QR Generator</h2>
+      
+      {migrationNeeded && (
+        <div className="migration-notice">
+          <div className="migration-icon">
+            <i className="fas fa-database"></i>
+          </div>
+          <div className="migration-content">
+            <h3>Data Migration Required</h3>
+            <p>Your existing users data needs to be migrated to generate QR codes. This is a one-time process.</p>
+            <button onClick={handleMigrateData} className="migrate-btn" disabled={loading}>
+              {loading ? (
+                <>
+                  <div className="spinner-small"></div>
+                  Migrating...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-arrow-right"></i>
+                  Migrate Data Now
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+      
       <p>Click the button below to generate QR codes for all users and download as a zip file.</p>
       <button onClick={handleGenerateAndDownload} disabled={loading} style={{ padding: '12px 28px', fontSize: 18, borderRadius: 8, background: '#1976d2', color: '#fff', border: 'none', cursor: 'pointer', marginTop: 16 }}>
         {loading ? 'Generating...' : 'Generate & Download All QR Codes'}

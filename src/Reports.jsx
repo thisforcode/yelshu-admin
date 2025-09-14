@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-// import { getDatabase, ref, get } from 'firebase/database';
+import { useTenant } from './TenantContext';
+import { createTenantDataService } from './services/TenantDataService';
 import './Reports.css';
+import './NoEventSelected.css';
 
 // Helper to convert pivot data to CSV
 function pivotDataToCSV(pivotData) {
@@ -42,16 +44,42 @@ function formatDate(dateStr) {
 
 
 function Reports() {
-  const [loading] = useState(true);
-  const [pivotData] = useState({ rows: [], columns: [] });
-  const [userWiseRows] = useState([]);
-  const [checkedInUsers] = useState(0);
-  const [totalUsers] = useState(0);
-  const [usersData] = useState({});
+  const { tenantId, selectedEventId } = useTenant();
+  const [loading, setLoading] = useState(true);
+  const [pivotData, setPivotData] = useState({ rows: [], columns: [] });
+  const [userWiseRows, setUserWiseRows] = useState([]);
+  const [checkedInUsers, setCheckedInUsers] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [usersData, setUsersData] = useState({});
 
   useEffect(() => {
-    // TODO: Add your data fetching logic here and update state accordingly
-  }, []);
+    if (!tenantId || !selectedEventId) return;
+    
+    const fetchReportsData = async () => {
+      setLoading(true);
+      try {
+        const tenantService = createTenantDataService(tenantId);
+        const stats = await tenantService.getDashboardStats(selectedEventId);
+        
+        setTotalUsers(stats.totalUsers);
+        setCheckedInUsers(stats.checkedInUsers);
+        setPivotData(stats.pivotData);
+        setUserWiseRows(stats.userWiseRows);
+        setUsersData(stats.usersData);
+      } catch (error) {
+        console.error('Error fetching reports data:', error);
+        setTotalUsers(0);
+        setCheckedInUsers(0);
+        setPivotData({ rows: [], columns: [] });
+        setUserWiseRows([]);
+        setUsersData({});
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchReportsData();
+  }, [tenantId, selectedEventId]);
 
   // ...existing code for rendering tables and content...
 
@@ -173,6 +201,23 @@ function Reports() {
             })}
           </tbody>
         </table>
+      </div>
+    );
+  }
+
+  if (!selectedEventId) {
+    return (
+      <div className="reports-page">
+        <h1>Reports</h1>
+        <div className="no-event-selected">
+          <div className="no-event-icon">
+            <i className="fas fa-calendar-times"></i>
+          </div>
+          <div className="no-event-content">
+            <h3>No Event Selected</h3>
+            <p>Please select an event from the header dropdown to view reports.</p>
+          </div>
+        </div>
       </div>
     );
   }

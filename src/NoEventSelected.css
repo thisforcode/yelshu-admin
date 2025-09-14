@@ -1,0 +1,33 @@
+/* No event selected state styles */
+.no-event-selected {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin: 20px 0;
+  border: 2px dashed #e0e0e0;
+}
+
+.no-event-icon {
+  font-size: 48px;
+  color: #ccc;
+  margin-bottom: 20px;
+}
+
+.no-event-content h3 {
+  font-size: 24px;
+  color: #666;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.no-event-content p {
+  font-size: 16px;
+  color: #888;
+  margin: 0;
+  max-width: 400px;
+}

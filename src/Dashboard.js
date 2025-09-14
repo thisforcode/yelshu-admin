@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { getDatabase, ref, get } from 'firebase/database';
+import { useTenant } from './TenantContext';
+import { createTenantDataService } from './services/TenantDataService';
+import FirestoreDebug from './FirestoreDebug';
 import './Reports.css';
+import './NoEventSelected.css';
 
 // Helper to convert pivot data to CSV
 function pivotDataToCSV(pivotData) {
@@ -44,6 +47,7 @@ function formatDate(dateStr) {
 // ...existing code...
 
 const Dashboard = () => {
+  const { tenantId, selectedEventId } = useTenant();
   const [totalUsers, setTotalUsers] = useState(0);
   const [checkedInUsers, setCheckedInUsers] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -51,6 +55,7 @@ const Dashboard = () => {
   const [userWiseRows, setUserWiseRows] = useState([]);
   const [usersData, setUsersData] = useState({});
   const [popover, setPopover] = useState({ visible: false, content: [], x: 0, y: 0 });
+  const [migrationNeeded, setMigrationNeeded] = useState(false);
 
   // Close popover when clicking outside
   useEffect(() => {
@@ -70,124 +75,60 @@ const Dashboard = () => {
   }, [popover.visible]);
 
   useEffect(() => {
-    const fetchCounts = async () => {
+    if (!tenantId || !selectedEventId) return;
+    
+    const fetchDashboardData = async () => {
       setLoading(true);
-      const db = getDatabase();
-      const usersRef = ref(db, 'users');
-      const opttedRef = ref(db, 'tbl-optted');
       try {
-        let usersData = {};
-        const snap = await get(usersRef);
-        if (snap.exists()) {
-          usersData = snap.val();
-          setUsersData(usersData);
-          const arr = Object.values(usersData).filter(user => user.status === 1 || user.status === '1');
-          setTotalUsers(arr.length);
-        } else {
-          setUsersData({});
-          setTotalUsers(0);
-        }
-
-        const opttedSnap = await get(opttedRef);
-        if (opttedSnap.exists()) {
-          const opttedData = opttedSnap.val();
-          const checkinCount = Object.values(opttedData).filter(
-            (rec) => rec['opt-for'] === 'Check-in' && (rec['optted'] === true || rec['optted'] === 1 || rec['optted'] === '1')
-          ).length;
-          setCheckedInUsers(checkinCount);
-
-          // Pivot: collect all unique dates and opt-for values
-          const dateSet = new Set();
-          const optForSet = new Set();
-          const pivotMap = {};
-          Object.values(opttedData).forEach(rec => {
-            if (rec['optted'] === true || rec['optted'] === 1 || rec['optted'] === '1') {
-              const date = rec.date || rec['date'] || '';
-              const optFor = rec['opt-for'] || '';
-              dateSet.add(date);
-              optForSet.add(optFor);
-              if (!pivotMap[date]) pivotMap[date] = {};
-              if (!pivotMap[date][optFor]) pivotMap[date][optFor] = 0;
-              pivotMap[date][optFor] += 1;
-            }
-          });
-          const dates = Array.from(dateSet).sort((a, b) => new Date(b) - new Date(a));
-          const optFors = Array.from(optForSet).sort();
-          const rows = dates.map(date => {
-            const row = { date };
-            optFors.forEach(optFor => {
-              row[optFor] = pivotMap[date] && pivotMap[date][optFor] ? pivotMap[date][optFor] : 0;
-            });
-            return row;
-          });
-          setPivotData({ rows, columns: optFors });
-
-          // User-wise optted data: group by userId, date, opt-for
-          const userWiseMap = {};
-          Object.values(opttedData).forEach(rec => {
-            if (rec['optted'] === true || rec['optted'] === 1 || rec['optted'] === '1') {
-              const date = rec.date || rec['date'] || '';
-              const optFor = rec['opt-for'] || '';
-              // Use 'id' field for join: users.id === tbl-optted.id
-              const userId = rec['id'] || '';
-              const time = rec.time || rec['time'] || '';
-              const key = userId + '||' + date + '||' + optFor;
-              if (!userWiseMap[key]) {
-                userWiseMap[key] = { userId, date, optFor, count: 0, time: '', allTimes: [] };
-              }
-              
-              // Handle time data - can be string or object with indexed times
-              let timeArray = [];
-              if (typeof time === 'object' && time !== null) {
-                // Convert object with numeric keys to array
-                timeArray = Object.values(time).filter(t => t && typeof t === 'string');
-              } else if (typeof time === 'string' && time) {
-                timeArray = [time];
-              }
-              
-              // Merge with existing times and remove duplicates
-              userWiseMap[key].allTimes = [...new Set([...userWiseMap[key].allTimes, ...timeArray])];
-              
-              // Store the latest time for this combination
-              if (timeArray.length > 0) {
-                const latestTime = timeArray.sort().pop(); // Get the latest time
-                if (!userWiseMap[key].time || latestTime > userWiseMap[key].time) {
-                  userWiseMap[key].time = latestTime;
-                }
-              }
-              
-              if (optFor === 'Beverages' && typeof rec.count === 'number') {
-                userWiseMap[key].count += rec.count;
-              } else {
-                userWiseMap[key].count += 1;
-              }
-            }
-          });
-          const userWiseRows = Object.values(userWiseMap).sort((a, b) => {
-            if (a.userId < b.userId) return -1;
-            if (a.userId > b.userId) return 1;
-            if (a.date < b.date) return 1;
-            if (a.date > b.date) return -1;
-            if (a.optFor < b.optFor) return -1;
-            if (a.optFor > b.optFor) return 1;
-            return 0;
-          });
-          setUserWiseRows(userWiseRows);
-        } else {
-          setCheckedInUsers(0);
-          setPivotData({ rows: [], columns: [] });
-          setUserWiseRows([]);
-        }
-      } catch (e) {
+        const tenantService = createTenantDataService(tenantId);
+        const stats = await tenantService.getDashboardStats(selectedEventId);
+        
+        setTotalUsers(stats.totalUsers);
+        setCheckedInUsers(stats.checkedInUsers);
+        setPivotData(stats.pivotData);
+        setUserWiseRows(stats.userWiseRows);
+        setUsersData(stats.usersData);
+        setMigrationNeeded(false);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        // If no tenant data exists, offer migration
+        setMigrationNeeded(true);
         setTotalUsers(0);
         setCheckedInUsers(0);
         setPivotData({ rows: [], columns: [] });
         setUserWiseRows([]);
+        setUsersData({});
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
-    fetchCounts();
-  }, []);
+    
+    fetchDashboardData();
+  }, [tenantId, selectedEventId]);
+
+  const handleMigrateData = async () => {
+    if (!tenantId) return;
+    
+    try {
+      setLoading(true);
+      const tenantService = createTenantDataService(tenantId);
+      await tenantService.migrateExistingData();
+      
+      // Refresh data after migration
+      const stats = await tenantService.getDashboardStats(selectedEventId);
+      setTotalUsers(stats.totalUsers);
+      setCheckedInUsers(stats.checkedInUsers);
+      setPivotData(stats.pivotData);
+      setUserWiseRows(stats.userWiseRows);
+      setUsersData(stats.usersData);
+      setMigrationNeeded(false);
+    } catch (error) {
+      console.error('Error migrating data:', error);
+      alert('Failed to migrate data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Rendered content for main pivot table
   let pivotTableContent;
@@ -377,9 +318,52 @@ const Dashboard = () => {
     );
   }
 
+  if (!selectedEventId) {
+    return (
+      <div className="reports-page">
+        <h1>Dashboard</h1>
+        <div className="no-event-selected">
+          <div className="no-event-icon">
+            <i className="fas fa-calendar-times"></i>
+          </div>
+          <div className="no-event-content">
+            <h3>No Event Selected</h3>
+            <p>Please select an event from the header dropdown to view dashboard data.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="reports-page">
       <h1>Dashboard</h1>
+      
+      {migrationNeeded && (
+        <div className="migration-notice">
+          <div className="migration-icon">
+            <i className="fas fa-database"></i>
+          </div>
+          <div className="migration-content">
+            <h3>Data Migration Required</h3>
+            <p>Your existing data needs to be migrated to the new tenant-based system. This is a one-time process.</p>
+            <button onClick={handleMigrateData} className="migrate-btn" disabled={loading}>
+              {loading ? (
+                <>
+                  <div className="spinner-small"></div>
+                  Migrating...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-arrow-right"></i>
+                  Migrate Data Now
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="tile-row">
         <div className="tile">
           <div className="tile-title">Total Registered Users</div>
@@ -415,6 +399,9 @@ const Dashboard = () => {
           {userWiseTableContent}
         </div>
       </div>
+      
+      {/* Firestore Debug Component - Temporary */}
+      <FirestoreDebug />
     </div>
   );
 }

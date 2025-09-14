@@ -1,12 +1,13 @@
 import './Users.css';
+import './NoEventSelected.css';
 import { useEffect, useState } from 'react';
-import { getDatabase, ref, query, orderByKey, push, update, get } from 'firebase/database';
-import '../src/firebase';
+import { useTenant } from './TenantContext';
+import { createTenantDataService } from './services/TenantDataService';
 import { QRCodeCanvas } from 'qrcode.react';
-
 import Papa from 'papaparse';
 
 export default function Users() {
+  const { tenantId, selectedEventId } = useTenant();
   const [usersData, setUsersData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   // Pagination states
@@ -28,61 +29,53 @@ export default function Users() {
   const [bulkRows, setBulkRows] = useState([]); // {row, errors, isValid, originalIdx}
   const [bulkInvalidCount, setBulkInvalidCount] = useState(0);
   const [bulkUploading, setBulkUploading] = useState(false);
+  const [migrationNeeded, setMigrationNeeded] = useState(false);
 
   // Fetch total count (for pagination)
   useEffect(() => {
-    const db = getDatabase();
-    const usersRef = ref(db, 'users');
+    if (!tenantId || !selectedEventId) return;
+    
     const fetchCount = async () => {
-      const snap = await get(usersRef);
-      if (snap.exists()) {
-        const data = snap.val();
-        const arr = Object.values(data).filter((user) => user.status === 1 || user.status === '1');
-        setTotalCount(arr.length);
-      } else {
+      try {
+        const tenantService = createTenantDataService(tenantId);
+        const users = await tenantService.getUsers(selectedEventId);
+        setTotalCount(users.length);
+        setMigrationNeeded(false);
+      } catch (error) {
+        console.error('Error fetching user count:', error);
         setTotalCount(0);
+        setMigrationNeeded(true);
       }
     };
+    
     fetchCount();
-  }, []);
+  }, [tenantId, selectedEventId]);
 
-  // Fetch paginated users from Firebase
+  // Fetch paginated users
   useEffect(() => {
-    setLoading(true);
-    const db = getDatabase();
-    let usersQuery = query(ref(db, 'users'), orderByKey());
-    // For pagination, calculate startAt key
-    // Firebase Realtime DB does not support offset, so we fetch (page * pageSize) and slice
+    if (!tenantId || !selectedEventId) return;
+    
     const fetchUsers = async () => {
-      const snap = await get(usersQuery);
-      if (snap.exists()) {
-        let data = snap.val();
-        let arr = Object.entries(data)
-          .map(([id, user]) => ({ id, ...user }))
-          .filter((user) => user.status === 1 || user.status === '1');
-        // Search filter
-        if (searchTerm.trim()) {
-          const term = searchTerm.trim().toLowerCase();
-          arr = arr.filter(user =>
-            (user.name && user.name.toLowerCase().includes(term)) ||
-            (user.email && user.email.toLowerCase().includes(term)) ||
-            (user.mobile && user.mobile.toLowerCase().includes(term)) ||
-            (user.guestType && user.guestType.toLowerCase().includes(term))
-          );
-        }
-        setTotalCount(arr.length);
-        // Pagination
-        const startIdx = (page - 1) * pageSize;
-        const paged = arr.slice(startIdx, startIdx + pageSize);
-        setUsersData(paged);
-      } else {
+      setLoading(true);
+      try {
+        const tenantService = createTenantDataService(tenantId);
+        const result = await tenantService.getUsersPaginated(page, pageSize, searchTerm, selectedEventId);
+        
+        setUsersData(result.users);
+        setTotalCount(result.totalCount);
+        setMigrationNeeded(false);
+      } catch (error) {
+        console.error('Error fetching users:', error);
         setUsersData([]);
         setTotalCount(0);
+        setMigrationNeeded(true);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
+    
     fetchUsers();
-  }, [page, pageSize, searchTerm]);
+  }, [tenantId, selectedEventId, page, pageSize, searchTerm]);
 
   // Handler for opening add user modal
   const handleAddUserClick = () => {
@@ -222,18 +215,29 @@ export default function Users() {
       return;
     }
     try {
-      const db = getDatabase();
-      const usersRef = ref(db, 'users');
+      const tenantService = createTenantDataService(tenantId);
+      
       for (const r of validRows) {
-        // Push user and get key
-        const newUserRef = await push(usersRef, { ...r.row, status: 1 });
-        const userId = newUserRef.key;
-        // Update the user with id field
-        await update(ref(db, `users/${userId}`), { id: userId });
+        // Attach selected event id so user is linked to the current event
+        const userData = { 
+          ...r.row, 
+          status: 1, 
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          eventId: selectedEventId,
+          'event-id': selectedEventId
+        };
+        await tenantService.createUser(userData);
       }
+      
       setShowBulkModal(false);
       setBulkRows([]);
       setBulkInvalidCount(0);
+      
+      // Refresh data
+      const result = await tenantService.getUsersPaginated(page, pageSize, searchTerm, selectedEventId);
+      setUsersData(result.users);
+      setTotalCount(result.totalCount);
+      
     } catch (err) {
       alert('Failed to upload users.');
     } finally {
@@ -263,21 +267,33 @@ export default function Users() {
     }
     setAdding(true);
     try {
-      const db = getDatabase();
+      const tenantService = createTenantDataService(tenantId);
+      
       if (editUserId) {
         // Edit user
-        const userRef = ref(db, `users/${editUserId}`);
-        await update(userRef, { ...newUser });
+        await tenantService.updateUser(editUserId, newUser);
       } else {
         // Add user
-        const usersRef = ref(db, 'users');
-        const newUserRef = await push(usersRef, { ...newUser, status: 1 });
-        const userId = newUserRef.key;
-        await update(ref(db, `users/${userId}`), { id: userId });
+        // Ensure the created user is linked to current event and tenant
+        const userData = { 
+          ...newUser, 
+          status: 1, 
+          id: Date.now().toString(), 
+          eventId: selectedEventId,
+          'event-id': selectedEventId
+        };
+        await tenantService.createUser(userData);
       }
+      
       setShowAddModal(false);
       setEditUserId(null);
       setNewUser({ name: '', email: '', mobile: '', guestType: '', status: 1 });
+      
+      // Refresh data
+      const result = await tenantService.getUsersPaginated(page, pageSize, searchTerm, selectedEventId);
+      setUsersData(result.users);
+      setTotalCount(result.totalCount);
+      
     } catch (err) {
       setFormError(editUserId ? 'Failed to update user.' : 'Failed to add user.');
     } finally {
@@ -289,9 +305,13 @@ export default function Users() {
   const handleDeleteUser = async (userId) => {
     if (!window.confirm('Are you sure you want to deactivate this user?')) return;
     try {
-      const db = getDatabase();
-      const userRef = ref(db, `users/${userId}`);
-      await update(userRef, { status: 0 });
+      const tenantService = createTenantDataService(tenantId);
+      await tenantService.deleteUser(userId);
+      
+      // Refresh data
+      const result = await tenantService.getUsersPaginated(page, pageSize, searchTerm, selectedEventId);
+      setUsersData(result.users);
+      setTotalCount(result.totalCount);
     } catch (err) {
       alert('Failed to deactivate user.');
     }
@@ -307,8 +327,70 @@ export default function Users() {
     setQrUserId(null);
   };
 
+  const handleMigrateData = async () => {
+    if (!tenantId) return;
+    
+    try {
+      setLoading(true);
+      const tenantService = createTenantDataService(tenantId);
+      await tenantService.migrateExistingData();
+      
+      // Refresh data after migration
+      const result = await tenantService.getUsersPaginated(page, pageSize, searchTerm, selectedEventId);
+      setUsersData(result.users);
+      setTotalCount(result.totalCount);
+      setMigrationNeeded(false);
+    } catch (error) {
+      console.error('Error migrating data:', error);
+      alert('Failed to migrate data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!selectedEventId) {
+    return (
+      <div className="users-container">
+        <div className="no-event-selected">
+          <div className="no-event-icon">
+            <i className="fas fa-calendar-times"></i>
+          </div>
+          <div className="no-event-content">
+            <h3>No Event Selected</h3>
+            <p>Please select an event from the header dropdown to view and manage users.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="users-container">
+      {migrationNeeded && (
+        <div className="migration-notice">
+          <div className="migration-icon">
+            <i className="fas fa-database"></i>
+          </div>
+          <div className="migration-content">
+            <h3>Data Migration Required</h3>
+            <p>Your existing users data needs to be migrated to the new tenant-based system. This is a one-time process.</p>
+            <button onClick={handleMigrateData} className="migrate-btn" disabled={loading}>
+              {loading ? (
+                <>
+                  <div className="spinner-small"></div>
+                  Migrating...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-arrow-right"></i>
+                  Migrate Users Data Now
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="users-header-row">
         <h1 className="users-title">Admin Dashboard</h1>
         <div className="users-actions">
