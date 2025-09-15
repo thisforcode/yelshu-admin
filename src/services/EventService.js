@@ -2,6 +2,7 @@ import {
   collection, 
   addDoc, 
   getDocs, 
+  getDoc,
   doc, 
   updateDoc, 
   deleteDoc, 
@@ -19,6 +20,22 @@ class EventService {
     }
     this.tenantId = tenantId;
     this.eventsCollection = `tenants/${tenantId}/events`;
+  }
+
+  // Get a single event by ID
+  async getEvent(eventId) {
+    try {
+      await this._waitForAuth();
+      const eventRef = doc(db, this.eventsCollection, eventId);
+      const snap = await getDoc(eventRef);
+      if (!snap.exists()) {
+        throw new Error('Event not found');
+      }
+      return { id: snap.id, ...snap.data() };
+    } catch (error) {
+      console.error('Error fetching event:', error);
+      throw new Error('Failed to fetch event');
+    }
   }
 
   // Check if user is authenticated before making requests

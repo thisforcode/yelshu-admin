@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useTenant } from './TenantContext';
 import { createEventService } from './services/EventService';
 import './CreateEvent.css';
 
-const CreateEvent = () => {
+const EditEvent = () => {
   const navigate = useNavigate();
   const { tenantId } = useTenant();
-  const [loading, setLoading] = useState(false);
+  const { eventId } = useParams();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [generatedPublicUrl, setGeneratedPublicUrl] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -23,7 +25,6 @@ const CreateEvent = () => {
     status: 'active',
     maxAttendees: '',
     registrationRequired: false,
-    generatePublicUrl: false,
     contactEmail: '',
     contactPhone: '',
     eventType: 'conference',
@@ -31,6 +32,8 @@ const CreateEvent = () => {
   });
 
   const [errors, setErrors] = useState({});
+  const [publicLink, setPublicLink] = useState('');
+  const [hasPublicLink, setHasPublicLink] = useState(false);
 
   const eventTypes = [
     { value: 'conference', label: 'Conference' },
@@ -43,76 +46,92 @@ const CreateEvent = () => {
     { value: 'other', label: 'Other' }
   ];
 
+  useEffect(() => {
+    const loadEvent = async () => {
+      try {
+        const service = createEventService(tenantId);
+        const evt = await service.getEvent(eventId);
+        setFormData({
+          name: evt.name || '',
+          description: evt.description || '',
+          startDate: evt.startDate ? (evt.startDate.toDate ? toLocalInput(evt.startDate.toDate()) : toLocalInput(new Date(evt.startDate))) : '',
+          endDate: evt.endDate ? (evt.endDate.toDate ? toLocalInput(evt.endDate.toDate()) : toLocalInput(new Date(evt.endDate))) : '',
+          registrationStart: evt.registrationStart ? (evt.registrationStart.toDate ? toLocalInput(evt.registrationStart.toDate()) : toLocalInput(new Date(evt.registrationStart))) : '',
+          registrationEnd: evt.registrationEnd ? (evt.registrationEnd.toDate ? toLocalInput(evt.registrationEnd.toDate()) : toLocalInput(new Date(evt.registrationEnd))) : '',
+          location: evt.location || '',
+          status: evt.status || 'active',
+          maxAttendees: evt.maxAttendees ?? '',
+          registrationRequired: !!evt.registrationRequired,
+          contactEmail: evt.contactEmail || '',
+          contactPhone: evt.contactPhone || '',
+          eventType: evt.eventType || 'conference',
+          tags: Array.isArray(evt.tags) ? evt.tags.join(', ') : (evt.tags || '')
+        });
+        // Setup public link state
+        if (evt.publicRegistrationId) {
+          setHasPublicLink(true);
+          const origin = window.location.origin;
+          setPublicLink(`${origin}/r/${tenantId}/${eventId}/${evt.publicRegistrationId}`);
+        } else {
+          setHasPublicLink(false);
+          setPublicLink('');
+        }
+        setError('');
+      } catch (err) {
+        console.error(err);
+        setError('Failed to load event');
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (tenantId && eventId) loadEvent();
+  }, [tenantId, eventId]);
+
+  const toLocalInput = (date) => {
+    const pad = (n) => String(n).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    const mm = pad(date.getMonth() + 1);
+    const dd = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const mi = pad(date.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const validateForm = () => {
     const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = 'Event name is required';
+    if (!formData.description.trim()) newErrors.description = 'Event description is required';
+    if (!formData.startDate) newErrors.startDate = 'Start date is required';
 
-    // Required fields
-    if (!formData.name.trim()) {
-      newErrors.name = 'Event name is required';
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = 'Event description is required';
-    }
-
-    if (!formData.startDate) {
-      newErrors.startDate = 'Start date is required';
-    }
-
-    // Date validation
     if (formData.startDate && formData.endDate) {
       const start = new Date(formData.startDate);
       const end = new Date(formData.endDate);
-      if (end < start) {
-        newErrors.endDate = 'End date cannot be before start date';
-      }
+      if (end < start) newErrors.endDate = 'End date cannot be before start date';
     }
 
-    // Registration window validation (optional but must be consistent if provided)
     if (formData.registrationStart && formData.registrationEnd) {
       const rStart = new Date(formData.registrationStart);
       const rEnd = new Date(formData.registrationEnd);
-      if (rEnd < rStart) {
-        newErrors.registrationEnd = 'Registration end cannot be before registration start';
-      }
+      if (rEnd < rStart) newErrors.registrationEnd = 'Registration end cannot be before registration start';
     }
 
-    // Optional: registration window should not end before event starts if both provided
-    if (formData.registrationEnd && formData.startDate) {
-      const rEnd = new Date(formData.registrationEnd);
-      const eStart = new Date(formData.startDate);
-      if (rEnd > eStart) {
-        // Allow but warn? For now, no hard error.
-      }
-    }
-
-    // Email validation
     if (formData.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
       newErrors.contactEmail = 'Please enter a valid email address';
     }
 
-    // Phone validation (basic)
-    if (formData.contactPhone && !/^[+]?[1-9][\d]{0,15}$/.test(formData.contactPhone.replace(/[\s\-()]/g, ''))) {
+    if (formData.contactPhone && !/^[+]?([0-9\s\-()]){7,16}$/.test(formData.contactPhone)) {
       newErrors.contactPhone = 'Please enter a valid phone number';
     }
 
-    // Max attendees validation
     if (formData.maxAttendees && (isNaN(formData.maxAttendees) || parseInt(formData.maxAttendees) < 1)) {
       newErrors.maxAttendees = 'Max attendees must be a positive number';
     }
@@ -123,71 +142,69 @@ const CreateEvent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
+    if (!validateForm()) return;
+    setSaving(true);
     setError('');
 
     try {
-      const eventService = createEventService(tenantId);
-      
-      // Prepare event data
-      const eventData = {
+      const service = createEventService(tenantId);
+      const updates = {
         ...formData,
         maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : null,
-        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
+        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
         startDate: formData.startDate ? new Date(formData.startDate) : null,
         endDate: formData.endDate ? new Date(formData.endDate) : null,
         registrationStart: formData.registrationStart ? new Date(formData.registrationStart) : null,
         registrationEnd: formData.registrationEnd ? new Date(formData.registrationEnd) : null
       };
-      // Do not persist the UI-only flag
-      delete eventData.generatePublicUrl;
-
-      // Conditionally generate a public registration token
-      if (formData.generatePublicUrl) {
-        const genToken = () => {
-          // Create a reasonably random 20-char token
-          const part = () => Math.random().toString(36).slice(2, 12);
-          return (part() + part()).slice(0, 20);
-        };
-        eventData.publicRegistrationId = genToken();
-      }
-      const created = await eventService.createEvent(eventData);
-      // Optionally copy the public link to clipboard if generated
-      if (formData.generatePublicUrl && created?.id && eventData.publicRegistrationId) {
-        try {
-          const origin = window.location.origin;
-          const publicUrl = `${origin}/r/${tenantId}/${created.id}/${eventData.publicRegistrationId}`;
-          setGeneratedPublicUrl(publicUrl);
-          await navigator.clipboard.writeText(publicUrl);
-        } catch (clipErr) {
-          // Non-fatal if clipboard is not available
-          console.warn('Could not copy public URL to clipboard:', clipErr);
-        }
-      }
+      await service.updateEvent(eventId, updates);
       setSuccess(true);
-      
-      // Redirect after success animation
-      const redirectDelay = formData.generatePublicUrl ? 5000 : 2000;
-      setTimeout(() => {
-        navigate('/events');
-      }, redirectDelay);
-
+      setTimeout(() => navigate('/events'), 1400);
     } catch (err) {
-      setError('Failed to create event. Please try again.');
-      console.error('Error creating event:', err);
+      console.error(err);
+      setError('Failed to update event. Please try again.');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleCancel = () => {
-    navigate('/events');
+  const handleCancel = () => navigate('/events');
+
+  const togglePublicLink = async (enable) => {
+    try {
+      const service = createEventService(tenantId);
+      if (enable) {
+        // Generate token if missing
+        const genToken = () => {
+          const part = () => Math.random().toString(36).slice(2, 12);
+          return (part() + part()).slice(0, 20);
+        };
+        const token = genToken();
+        await service.updateEvent(eventId, { publicRegistrationId: token });
+        const origin = window.location.origin;
+        const url = `${origin}/r/${tenantId}/${eventId}/${token}`;
+        setHasPublicLink(true);
+        setPublicLink(url);
+        try { await navigator.clipboard.writeText(url); } catch {}
+      } else {
+        // Remove token
+        await service.updateEvent(eventId, { publicRegistrationId: null });
+        setHasPublicLink(false);
+        setPublicLink('');
+      }
+    } catch (err) {
+      console.error('Failed to toggle public link', err);
+      setError('Failed to update public link setting');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="create-event-container" style={{ padding: 40, textAlign: 'center' }}>
+        Loading event...
+      </div>
+    );
+  }
 
   if (success) {
     return (
@@ -196,56 +213,8 @@ const CreateEvent = () => {
           <div className="success-icon">
             <i className="fas fa-check-circle"></i>
           </div>
-          <h2>Event Created Successfully!</h2>
-          <p>Your event has been created and is now available.</p>
-          {generatedPublicUrl && (
-            <div style={{
-              background: '#fff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 8,
-              padding: 16,
-              marginTop: 12,
-              textAlign: 'left'
-            }}>
-              <div style={{ fontWeight: 600, marginBottom: 8, color: '#0f172a' }}>Public Registration Link</div>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
-                Copied to clipboard. You can share this link with attendees.
-              </div>
-              <div style={{
-                display: 'flex',
-                gap: 8,
-                alignItems: 'center'
-              }}>
-                <input
-                  type="text"
-                  readOnly
-                  value={generatedPublicUrl}
-                  style={{ flex: 1, padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6 }}
-                  onFocus={(e) => e.target.select()}
-                />
-                <button
-                  type="button"
-                  className="submit-btn"
-                  onClick={async () => {
-                    try { await navigator.clipboard.writeText(generatedPublicUrl); } catch {}
-                  }}
-                >
-                  <i className="fas fa-copy"></i>
-                  Copy
-                </button>
-                <a
-                  href={generatedPublicUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="cancel-btn"
-                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                >
-                  <i className="fas fa-external-link-alt"></i>
-                  Open
-                </a>
-              </div>
-            </div>
-          )}
+          <h2>Event Updated Successfully!</h2>
+          <p>Your changes have been saved.</p>
           <div className="success-animation">
             <div className="pulse-circle"></div>
             <div className="pulse-circle delay-1"></div>
@@ -265,10 +234,10 @@ const CreateEvent = () => {
         </button>
         <div className="header-content">
           <h1 className="create-event-title">
-            <i className="fas fa-plus-circle"></i>
-            Create New Event
+            <i className="fas fa-edit"></i>
+            Edit Event
           </h1>
-          <p className="create-event-subtitle">Fill in the details to create your event</p>
+          <p className="create-event-subtitle">Modify your event details and save changes</p>
         </div>
       </div>
 
@@ -287,7 +256,7 @@ const CreateEvent = () => {
               <i className="fas fa-info-circle"></i>
               Basic Information
             </h3>
-            
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="name" className="form-label">
@@ -344,7 +313,7 @@ const CreateEvent = () => {
               <i className="fas fa-clock"></i>
               Date & Time
             </h3>
-            
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="startDate" className="form-label">
@@ -414,7 +383,7 @@ const CreateEvent = () => {
               <i className="fas fa-map-marker-alt"></i>
               Location & Details
             </h3>
-            
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="location" className="form-label">Location</label>
@@ -466,7 +435,7 @@ const CreateEvent = () => {
               <i className="fas fa-address-book"></i>
               Contact Information
             </h3>
-            
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="contactEmail" className="form-label">Contact Email</label>
@@ -504,7 +473,7 @@ const CreateEvent = () => {
               <i className="fas fa-cog"></i>
               Settings
             </h3>
-            
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="status" className="form-label">Status</label>
@@ -538,34 +507,61 @@ const CreateEvent = () => {
               </div>
             </div>
 
+            {/* Public link setting */}
             <div className="form-row">
               <div className="form-group">
                 <div className="checkbox-group">
                   <input
                     type="checkbox"
-                    id="generatePublicUrl"
-                    name="generatePublicUrl"
-                    checked={formData.generatePublicUrl}
-                    onChange={handleInputChange}
+                    id="enablePublicLink"
+                    name="enablePublicLink"
+                    checked={hasPublicLink}
+                    onChange={(e) => togglePublicLink(e.target.checked)}
                     className="form-checkbox"
                   />
-                  <label htmlFor="generatePublicUrl" className="checkbox-label">
-                    Generate Public Registration Link
+                  <label htmlFor="enablePublicLink" className="checkbox-label">
+                    Enable Public Registration Link
                   </label>
                 </div>
-                <small className="form-hint">If checked, a public registration URL will be created for this event.</small>
-                {formData.generatePublicUrl && (
+                {!hasPublicLink && (
+                  <small className="form-hint">Check to generate a public registration URL.</small>
+                )}
+                {hasPublicLink && (
                   <div style={{
                     marginTop: 10,
-                    background: '#f1f5f9',
+                    background: '#f8fafc',
                     border: '1px solid #e2e8f0',
                     borderRadius: 8,
-                    padding: 10,
-                    color: '#334155',
-                    fontSize: 13
+                    padding: 12
                   }}>
-                    <i className="fas fa-link" style={{ marginRight: 8, color: '#1d4ed8' }}></i>
-                    The link will be generated after you create the event and will appear on the success screen.
+                    <div style={{ fontWeight: 600, marginBottom: 8, color: '#0f172a' }}>Public Registration Link</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        readOnly
+                        value={publicLink}
+                        style={{ flex: 1, padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6 }}
+                        onFocus={(e) => e.target.select()}
+                      />
+                      <button
+                        type="button"
+                        className="submit-btn"
+                        onClick={async () => { try { await navigator.clipboard.writeText(publicLink); } catch {} }}
+                      >
+                        <i className="fas fa-copy"></i>
+                        Copy
+                      </button>
+                      <a
+                        href={publicLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="cancel-btn"
+                        style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <i className="fas fa-external-link-alt"></i>
+                        Open
+                      </a>
+                    </div>
                   </div>
                 )}
               </div>
@@ -579,24 +575,24 @@ const CreateEvent = () => {
             type="button"
             onClick={handleCancel}
             className="cancel-btn"
-            disabled={loading}
+            disabled={saving}
           >
             Cancel
           </button>
           <button
             type="submit"
             className="submit-btn"
-            disabled={loading}
+            disabled={saving}
           >
-            {loading ? (
+            {saving ? (
               <>
                 <div className="loading-spinner-small"></div>
-                Creating...
+                Saving...
               </>
             ) : (
               <>
-                <i className="fas fa-plus"></i>
-                Create Event
+                <i className="fas fa-save"></i>
+                Save Changes
               </>
             )}
           </button>
@@ -606,4 +602,4 @@ const CreateEvent = () => {
   );
 };
 
-export default CreateEvent;
+export default EditEvent;

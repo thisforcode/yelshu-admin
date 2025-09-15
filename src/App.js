@@ -10,6 +10,8 @@ import { TenantProvider, useTenant } from './TenantContext';
 import BulkQRGenerator from './BulkQRGenerator';
 import Events from './Events';
 import CreateEvent from './CreateEvent';
+import EditEvent from './EditEvent';
+import PublicRegister from './PublicRegister';
 
 import Login from './Login';
 import Dashboard from './Dashboard';
@@ -87,10 +89,13 @@ function AppContent() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/events" element={<Events />} />
           <Route path="/create-event" element={<CreateEvent />} />
+          <Route path="/edit-event/:eventId" element={<EditEvent />} />
           <Route path="/users" element={<Users />} />
           <Route path="/bulk-qr-generator" element={<BulkQRGenerator />} />
 {/* ...existing code... */}
         </Route>
+  {/* Public registration route (no auth required) */}
+  <Route path="/r/:tenantId/:eventId/:token" element={<PublicRegister />} />
         <Route path="*" element={<Navigate to={(isAuthenticated || user) ? "/dashboard" : "/login"} replace />} />
       </Routes>
     </Router>

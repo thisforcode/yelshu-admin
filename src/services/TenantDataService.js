@@ -15,6 +15,48 @@ class TenantDataService {
     this.basePath = `tenants/${tenantId}`;
   }
 
+  // Duplicate checks
+  async checkEmailExists(email, eventId = null) {
+    if (!email) return false;
+    try {
+      const usersRef = dbRef(realtimeDb, `${this.basePath}/users`);
+      const snapshot = await get(usersRef);
+      if (!snapshot.exists()) return false;
+
+      const data = snapshot.val();
+      const emailLower = email.trim().toLowerCase();
+      return Object.values(data).some((user) => {
+        const matchesEvent = !eventId || user.eventId === eventId || user['event-id'] === eventId;
+        const matchesStatus = user.status === 1 || user.status === '1' || user.status === 'draft';
+        return matchesEvent && matchesStatus && user.email && user.email.trim().toLowerCase() === emailLower;
+      });
+    } catch (error) {
+      console.error('Error checking email existence:', error);
+      throw new Error('Failed to check email');
+    }
+  }
+
+  async checkPhoneExists(mobile, eventId = null) {
+    if (!mobile) return false;
+    try {
+      const usersRef = dbRef(realtimeDb, `${this.basePath}/users`);
+      const snapshot = await get(usersRef);
+      if (!snapshot.exists()) return false;
+
+      const data = snapshot.val();
+      const norm = String(mobile).replace(/\D/g, '');
+      return Object.values(data).some((user) => {
+        const matchesEvent = !eventId || user.eventId === eventId || user['event-id'] === eventId;
+        const matchesStatus = user.status === 1 || user.status === '1' || user.status === 'draft';
+        const userNorm = user.mobile ? String(user.mobile).replace(/\D/g, '') : '';
+        return matchesEvent && matchesStatus && userNorm && userNorm === norm;
+      });
+    } catch (error) {
+      console.error('Error checking phone existence:', error);
+      throw new Error('Failed to check phone');
+    }
+  }
+
   // Users operations
   async getUsers(eventId = null) {
     try {

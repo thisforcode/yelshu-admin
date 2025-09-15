@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTenant } from './TenantContext';
 import { createEventService } from './services/EventService';
@@ -13,7 +13,7 @@ const Events = () => {
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     try {
       setLoading(true);
       const eventService = createEventService(tenantId);
@@ -33,14 +33,13 @@ const Events = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tenantId, filterStatus]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (tenantId) {
       loadEvents();
     }
-  }, [tenantId, filterStatus]); // loadEvents is defined above, so we don't need to include it
+  }, [tenantId, loadEvents]);
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
@@ -78,6 +77,30 @@ const Events = () => {
       loadEvents();
     } catch (err) {
       setError('Failed to update event status');
+    }
+  };
+
+  const handleGenerateLink = async (event) => {
+    try {
+      const eventService = createEventService(tenantId);
+      let updated = event;
+      if (!event.publicRegistrationId) {
+        const token = Math.random().toString(36).substr(2, 9);
+        await eventService.updateEvent(event.id, { publicRegistrationId: token });
+        updated = { ...event, publicRegistrationId: token };
+      }
+
+      // Build public URL
+      const origin = window.location.origin;
+      const publicUrl = `${origin}/r/${tenantId}/${event.id}/${updated.publicRegistrationId}`;
+      // Copy to clipboard
+      await navigator.clipboard.writeText(publicUrl);
+      alert('Public registration link copied to clipboard:\n' + publicUrl);
+      // Refresh events list
+      loadEvents();
+    } catch (err) {
+      console.error('Failed to generate link', err);
+      setError('Failed to generate public link');
     }
   };
 
@@ -203,6 +226,22 @@ const Events = () => {
                         <option value="cancelled">Cancelled</option>
                       </select>
                     </div>
+                    <Link
+                      to={`/edit-event/${event.id}`}
+                      className="link-btn"
+                      title="Edit Event"
+                    >
+                      <i className="fas fa-edit"></i>
+                    </Link>
+                    {event.publicRegistrationId && (
+                      <button
+                        onClick={() => handleGenerateLink(event)}
+                        className="link-btn"
+                        title="Copy Public Link"
+                      >
+                        <i className="fas fa-link"></i>
+                      </button>
+                    )}
                     <button
                       onClick={() => setDeleteConfirm(event.id)}
                       className="delete-btn"
@@ -241,6 +280,54 @@ const Events = () => {
                     <div className="event-location">
                       <i className="fas fa-map-marker-alt"></i>
                       <span>{event.location}</span>
+                    </div>
+                  )}
+
+                  {/* Public link (shown only when enabled) */}
+                  {event.publicRegistrationId && (
+                    <div style={{
+                      marginTop: 12,
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 8,
+                      padding: 10
+                    }}>
+                      <div style={{ fontWeight: 600, marginBottom: 8, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <i className="fas fa-link" style={{ color: '#2563eb' }}></i>
+                        Public Registration Link
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          readOnly
+                          value={`${window.location.origin}/r/${tenantId}/${event.id}/${event.publicRegistrationId}`}
+                          style={{ flex: 1, padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6 }}
+                          onFocus={(e) => e.target.select()}
+                        />
+                        <button
+                          type="button"
+                          className="link-btn"
+                          title="Copy Link"
+                          onClick={async () => {
+                            try {
+                              const url = `${window.location.origin}/r/${tenantId}/${event.id}/${event.publicRegistrationId}`;
+                              await navigator.clipboard.writeText(url);
+                            } catch {}
+                          }}
+                        >
+                          <i className="fas fa-copy"></i>
+                        </button>
+                        <a
+                          href={`${window.location.origin}/r/${tenantId}/${event.id}/${event.publicRegistrationId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="link-btn"
+                          title="Open Link"
+                          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <i className="fas fa-external-link-alt"></i>
+                        </a>
+                      </div>
                     </div>
                   )}
                 </div>
