@@ -38,8 +38,8 @@ export default function SidebarLayout({ onLogout }) {
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <img src={logo} alt="Logo" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }} />
-        <Typography variant="h3" sx={{ fontWeight: 700 }}>HRTC Admin</Typography>
+  <img src={logo} alt="Logo" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }} />
+  <Typography variant="h3" sx={{ fontWeight: 700 }}>Yelshu Admin</Typography>
       </Box>
       <Divider />
       <List sx={{ px: 1, pt: 1 }}>
