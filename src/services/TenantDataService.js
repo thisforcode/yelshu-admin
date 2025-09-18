@@ -1,10 +1,14 @@
-import { 
-  ref as dbRef, 
-  get, 
-  push, 
-  update
-} from 'firebase/database';
-import { realtimeDb } from '../firebase';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  doc,
+  updateDoc,
+  setDoc
+} from 'firebase/firestore';
+import { db } from '../firebase';
 
 class TenantDataService {
   constructor(tenantId) {
@@ -13,23 +17,33 @@ class TenantDataService {
     }
     this.tenantId = tenantId;
     this.basePath = `tenants/${tenantId}`;
+    this.usersCollectionPath = `${this.basePath}/users`;
+    this.opttedCollectionPath = `${this.basePath}/tbl-optted`;
   }
 
   // Duplicate checks
   async checkEmailExists(email, eventId = null) {
     if (!email) return false;
     try {
-      const usersRef = dbRef(realtimeDb, `${this.basePath}/users`);
-      const snapshot = await get(usersRef);
-      if (!snapshot.exists()) return false;
+      const usersCol = collection(db, this.usersCollectionPath);
+      // We cannot query case-insensitive email easily; fetch candidates by eventId if provided
+      let q;
+      if (eventId) {
+        q = query(usersCol, where('eventId', '==', eventId));
+      } else {
+        q = query(usersCol);
+      }
+      const snap = await getDocs(q);
+      if (snap.empty) return false;
 
-      const data = snapshot.val();
       const emailLower = email.trim().toLowerCase();
-      return Object.values(data).some((user) => {
-        const matchesEvent = !eventId || user.eventId === eventId || user['event-id'] === eventId;
+      for (const d of snap.docs) {
+        const user = d.data();
         const matchesStatus = user.status === 1 || user.status === '1' || user.status === 'draft';
-        return matchesEvent && matchesStatus && user.email && user.email.trim().toLowerCase() === emailLower;
-      });
+        const userEmail = user.email || '';
+        if (matchesStatus && userEmail && userEmail.trim().toLowerCase() === emailLower) return true;
+      }
+      return false;
     } catch (error) {
       console.error('Error checking email existence:', error);
       throw new Error('Failed to check email');
@@ -39,18 +53,21 @@ class TenantDataService {
   async checkPhoneExists(mobile, eventId = null) {
     if (!mobile) return false;
     try {
-      const usersRef = dbRef(realtimeDb, `${this.basePath}/users`);
-      const snapshot = await get(usersRef);
-      if (!snapshot.exists()) return false;
+      const usersCol = collection(db, this.usersCollectionPath);
+      let q;
+      if (eventId) q = query(usersCol, where('eventId', '==', eventId));
+      else q = query(usersCol);
+      const snap = await getDocs(q);
+      if (snap.empty) return false;
 
-      const data = snapshot.val();
       const norm = String(mobile).replace(/\D/g, '');
-      return Object.values(data).some((user) => {
-        const matchesEvent = !eventId || user.eventId === eventId || user['event-id'] === eventId;
+      for (const d of snap.docs) {
+        const user = d.data();
         const matchesStatus = user.status === 1 || user.status === '1' || user.status === 'draft';
         const userNorm = user.mobile ? String(user.mobile).replace(/\D/g, '') : '';
-        return matchesEvent && matchesStatus && userNorm && userNorm === norm;
-      });
+        if (matchesStatus && userNorm && userNorm === norm) return true;
+      }
+      return false;
     } catch (error) {
       console.error('Error checking phone existence:', error);
       throw new Error('Failed to check phone');
@@ -60,23 +77,19 @@ class TenantDataService {
   // Users operations
   async getUsers(eventId = null) {
     try {
-      const usersRef = dbRef(realtimeDb, `${this.basePath}/users`);
-      const snapshot = await get(usersRef);
-      
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        let users = Object.entries(data)
-          .map(([id, user]) => ({ id, ...user }))
-          .filter((user) => user.status === 1 || user.status === '1');
-        
-        // Filter by eventId if provided
-        if (eventId) {
-          users = users.filter(user => user.eventId === eventId || user['event-id'] === eventId);
-        }
-        
-        return users;
-      }
-      return [];
+      const usersCol = collection(db, this.usersCollectionPath);
+      let q;
+      if (eventId) q = query(usersCol, where('eventId', '==', eventId));
+      else q = query(usersCol);
+
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) return [];
+
+      const users = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(u => u.status === 1 || u.status === '1');
+
+      return users;
     } catch (error) {
       console.error('Error fetching users:', error);
       throw new Error('Failed to fetch users');
@@ -85,17 +98,27 @@ class TenantDataService {
 
   async createUser(userData) {
     try {
-      const usersRef = dbRef(realtimeDb, `${this.basePath}/users`);
-      const newUserRef = push(usersRef);
+      const usersCol = collection(db, this.usersCollectionPath);
       const userWithTenant = {
         ...userData,
         tenantId: this.tenantId,
         createdAt: new Date().toISOString(),
         status: userData.status || 1
       };
-      
-      await update(newUserRef, userWithTenant);
-      return { id: newUserRef.key, ...userWithTenant };
+
+      // If caller passed an id, write with that id; otherwise addDoc
+      if (userWithTenant.id) {
+        const id = userWithTenant.id;
+        const userDocRef = doc(db, this.usersCollectionPath, id);
+        // Remove id from payload when saving as doc id
+        const payload = { ...userWithTenant };
+        delete payload.id;
+        await setDoc(userDocRef, payload);
+        return { id, ...payload };
+      } else {
+        const docRef = await addDoc(usersCol, userWithTenant);
+        return { id: docRef.id, ...userWithTenant };
+      }
     } catch (error) {
       console.error('Error creating user:', error);
       throw new Error('Failed to create user');
@@ -104,13 +127,13 @@ class TenantDataService {
 
   async updateUser(userId, userData) {
     try {
-      const userRef = dbRef(realtimeDb, `${this.basePath}/users/${userId}`);
+      const userDocRef = doc(db, this.usersCollectionPath, userId);
       const updateData = {
         ...userData,
         updatedAt: new Date().toISOString()
       };
-      
-      await update(userRef, updateData);
+
+      await updateDoc(userDocRef, updateData);
       return { id: userId, ...updateData };
     } catch (error) {
       console.error('Error updating user:', error);
@@ -120,8 +143,8 @@ class TenantDataService {
 
   async deleteUser(userId) {
     try {
-      const userRef = dbRef(realtimeDb, `${this.basePath}/users/${userId}`);
-      await update(userRef, { status: 0, deletedAt: new Date().toISOString() });
+      const userDocRef = doc(db, this.usersCollectionPath, userId);
+      await updateDoc(userDocRef, { status: 0, deletedAt: new Date().toISOString() });
       return true;
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -132,21 +155,15 @@ class TenantDataService {
   // Optted data operations
   async getOpttedData(eventId = null) {
     try {
-      const opttedRef = dbRef(realtimeDb, `${this.basePath}/tbl-optted`);
-      const snapshot = await get(opttedRef);
-      
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        let records = Object.entries(data).map(([id, record]) => ({ id, ...record }));
-        
-        // Filter by eventId if provided
-        if (eventId) {
-          records = records.filter(record => record.eventId === eventId || record['event-id'] === eventId);
-        }
-        
-        return records;
-      }
-      return [];
+      const opttedCol = collection(db, this.opttedCollectionPath);
+      let q;
+      if (eventId) q = query(opttedCol, where('eventId', '==', eventId));
+      else q = query(opttedCol);
+      const snap = await getDocs(q);
+      if (snap.empty) return [];
+
+      let records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      return records;
     } catch (error) {
       console.error('Error fetching optted data:', error);
       throw new Error('Failed to fetch optted data');
@@ -155,16 +172,14 @@ class TenantDataService {
 
   async createOpttedRecord(recordData) {
     try {
-      const opttedRef = dbRef(realtimeDb, `${this.basePath}/tbl-optted`);
-      const newRecordRef = push(opttedRef);
+      const opttedCol = collection(db, this.opttedCollectionPath);
       const recordWithTenant = {
         ...recordData,
         tenantId: this.tenantId,
         createdAt: new Date().toISOString()
       };
-      
-      await update(newRecordRef, recordWithTenant);
-      return { id: newRecordRef.key, ...recordWithTenant };
+      const docRef = await addDoc(opttedCol, recordWithTenant);
+      return { id: docRef.id, ...recordWithTenant };
     } catch (error) {
       console.error('Error creating optted record:', error);
       throw new Error('Failed to create optted record');
@@ -280,49 +295,31 @@ class TenantDataService {
   async migrateExistingData() {
     try {
       console.log('Starting data migration for tenant:', this.tenantId);
-      
-      // Get existing users from root
-      const existingUsersRef = dbRef(realtimeDb, 'users');
-      const existingUsersSnapshot = await get(existingUsersRef);
-      
-      if (existingUsersSnapshot.exists()) {
-        const existingUsers = existingUsersSnapshot.val();
-        const tenantUsersRef = dbRef(realtimeDb, `${this.basePath}/users`);
-        
-        // Copy users with tenant structure
-        const migratedUsers = {};
-        Object.entries(existingUsers).forEach(([id, user]) => {
-          migratedUsers[id] = {
-            ...user,
-            tenantId: this.tenantId,
-            migratedAt: new Date().toISOString()
-          };
-        });
-        
-        await update(tenantUsersRef, migratedUsers);
-        console.log('Users migrated successfully');
+
+      // Migrate from root Firestore collections if they exist
+      // Root users
+      const rootUsersCol = collection(db, 'users');
+      const rootUsersSnap = await getDocs(rootUsersCol);
+      if (!rootUsersSnap.empty) {
+        for (const d of rootUsersSnap.docs) {
+          const data = d.data();
+          const migrated = { ...data, tenantId: this.tenantId, migratedAt: new Date().toISOString() };
+          // Preserve original id
+          await setDoc(doc(db, this.usersCollectionPath, d.id), migrated);
+        }
+        console.log('Users migrated successfully from root Firestore collection');
       }
 
-      // Get existing optted data from root
-      const existingOpttedRef = dbRef(realtimeDb, 'tbl-optted');
-      const existingOpttedSnapshot = await get(existingOpttedRef);
-      
-      if (existingOpttedSnapshot.exists()) {
-        const existingOptted = existingOpttedSnapshot.val();
-        const tenantOpttedRef = dbRef(realtimeDb, `${this.basePath}/tbl-optted`);
-        
-        // Copy optted data with tenant structure
-        const migratedOptted = {};
-        Object.entries(existingOptted).forEach(([id, record]) => {
-          migratedOptted[id] = {
-            ...record,
-            tenantId: this.tenantId,
-            migratedAt: new Date().toISOString()
-          };
-        });
-        
-        await update(tenantOpttedRef, migratedOptted);
-        console.log('Optted data migrated successfully');
+      // Root tbl-optted
+      const rootOpttedCol = collection(db, 'tbl-optted');
+      const rootOpttedSnap = await getDocs(rootOpttedCol);
+      if (!rootOpttedSnap.empty) {
+        for (const d of rootOpttedSnap.docs) {
+          const data = d.data();
+          const migrated = { ...data, tenantId: this.tenantId, migratedAt: new Date().toISOString() };
+          await setDoc(doc(db, this.opttedCollectionPath, d.id), migrated);
+        }
+        console.log('Optted data migrated successfully from root Firestore collection');
       }
 
       return true;
