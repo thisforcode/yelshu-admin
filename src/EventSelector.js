@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTenant } from './TenantContext';
 import { createEventService } from './services/EventService';
 import './EventSelector.css';
@@ -53,20 +53,30 @@ const EventSelector = () => {
     return () => document.removeEventListener('click', onDocClick);
   }, [open]);
 
-  // Separate useEffect for auto-selection when events change
+  // Compute active events only
+  const activeEvents = useMemo(() => {
+    return (events || []).filter((e) => String(e?.status || '').toLowerCase() === 'active');
+  }, [events]);
+
+  // Auto-select first ACTIVE event when events change or when selection is invalid
   useEffect(() => {
-    if (!selectedEventId && events.length > 0) {
-      console.log('Auto-selecting first event (second effect):', events[0].id); // Debug log
-      setSelectedEventId(events[0].id);
+    if (activeEvents.length === 0) return; // nothing to select
+    const isSelectionActive = activeEvents.some((e) => e.id === selectedEventId);
+    if (!selectedEventId || !isSelectionActive) {
+      const firstActiveId = activeEvents[0].id;
+      console.log('EventSelector: Auto-selecting first ACTIVE event:', firstActiveId);
+      setSelectedEventId(firstActiveId);
     }
-  }, [events, selectedEventId, setSelectedEventId]);
+  }, [activeEvents, selectedEventId, setSelectedEventId]);
 
   const handleEventChange = (eventId) => {
     setSelectedEventId(eventId);
     setOpen(false);
   };
 
-  const selectedEvent = events.find(event => event.id === selectedEventId);
+  const selectedEvent = useMemo(() => {
+    return activeEvents.find((event) => event.id === selectedEventId) || null;
+  }, [activeEvents, selectedEventId]);
 
   if (!tenantId || !isAuthenticated || loading) {
     return (
@@ -88,6 +98,14 @@ const EventSelector = () => {
         >
           Create Event
         </button>
+      </div>
+    );
+  }
+
+  if (activeEvents.length === 0) {
+    return (
+      <div className="event-selector-container">
+        <div className="event-selector-no-events">No active events</div>
       </div>
     );
   }
@@ -124,38 +142,23 @@ const EventSelector = () => {
       {/* Dropdown first */}
       <div className={`event-dropdown ${open ? 'open' : ''}`} onClick={() => setOpen(!open)} role="button" tabIndex={0}>
         <div className="event-dropdown-toggle">
-          {selectedEvent ? selectedEvent.name : `Select an event (${events.length} available)`}
+          <span className="label">{selectedEvent ? selectedEvent.name : `Select an active event (${activeEvents.length})`}</span>
           <span className="caret">▾</span>
         </div>
 
         <div className="event-dropdown-list" style={{ display: open ? 'block' : 'none' }}>
-          {events.map((event) => (
-            <div key={event.id} className={`event-dropdown-item ${event.id === selectedEventId ? 'selected' : ''}`} onClick={() => handleEventChange(event.id)}>
+          {activeEvents.map((event) => (
+            <div
+              key={event.id}
+              className={`event-dropdown-item ${event.id === selectedEventId ? 'selected' : ''}`}
+              onClick={(e) => { e.stopPropagation(); handleEventChange(event.id); }}
+            >
               <div className="event-item-name">{event.name}</div>
               <div className="event-item-date">{fmt(event.startDate)} — {fmt(event.endDate)}</div>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Then current event information */}
-      <div className="event-selector-label">
-        <span>Current Event:</span>
-        {selectedEvent && (
-          <div className="event-selected">
-            <div className="event-selected-name">{selectedEvent.name}</div>
-            <div className="event-selected-date">{fmt(selectedEvent.startDate)} — {fmt(selectedEvent.endDate)}</div>
-          </div>
-        )}
-      </div>
-
-      {selectedEvent && (
-        <div className="event-selector-info">
-          <span className="event-status" data-status={selectedEvent.status}>
-            {selectedEvent.status}
-          </span>
-        </div>
-      )}
     </div>
   );
 };

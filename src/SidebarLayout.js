@@ -1,9 +1,23 @@
-
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
-import './SidebarLayout.css';
+import { Link as RouterLink, useLocation, Outlet } from 'react-router-dom';
+import Box from '@mui/material/Box';
+import Drawer from '@mui/material/Drawer';
+import Toolbar from '@mui/material/Toolbar';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Divider from '@mui/material/Divider';
+import Typography from '@mui/material/Typography';
+import HomeOutlined from '@mui/icons-material/HomeOutlined';
+import EventOutlined from '@mui/icons-material/EventOutlined';
+import GroupOutlined from '@mui/icons-material/GroupOutlined';
+import QrCode2Outlined from '@mui/icons-material/QrCode2Outlined';
 import logo from './assets/logo.jpeg';
 import HeaderBar from './HeaderBar';
+
+const drawerWidth = 260;
 
 export default function SidebarLayout({ onLogout }) {
   const location = useLocation();
@@ -14,29 +28,93 @@ export default function SidebarLayout({ onLogout }) {
     setSidebarOpen(false);
   }, [location.pathname]);
 
+  const navItems = [
+    { to: '/dashboard', label: 'Dashboard', icon: <HomeOutlined /> },
+    { to: '/events', label: 'Events', icon: <EventOutlined /> },
+    { to: '/users', label: 'Users', icon: <GroupOutlined /> },
+    { to: '/bulk-qr-generator', label: 'Bulk QR Generator', icon: <QrCode2Outlined /> },
+  ];
+
+  const drawer = (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <img src={logo} alt="Logo" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }} />
+        <Typography variant="h3" sx={{ fontWeight: 700 }}>HRTC Admin</Typography>
+      </Box>
+      <Divider />
+      <List sx={{ px: 1, pt: 1 }}>
+        {navItems.map((item) => {
+          const active = location.pathname === item.to;
+          return (
+            <ListItem key={item.to} disablePadding>
+              <ListItemButton
+                component={RouterLink}
+                to={item.to}
+                selected={active}
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: active ? 'primary.main' : 'text.secondary' }}>
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            </ListItem>
+          );
+        })}
+      </List>
+      <Box sx={{ flexGrow: 1 }} />
+      <Box sx={{ p: 2, color: 'text.secondary', fontSize: 12 }}>© {new Date().getFullYear()}</Box>
+    </Box>
+  );
+
   return (
-    <div className="dashboard-container">
-      <aside className={`sidebar${sidebarOpen ? ' open' : ''}`} aria-label="Sidebar Navigation">
-        <div className="sidebar-title">
-          <img src={logo} alt="Logo" style={{ width: 80, height: 80, objectFit: 'contain' }} />
-        </div>
-        <nav className="sidebar-nav">
-          <Link className={`nav-item${location.pathname === '/dashboard' ? ' active' : ''}`} to="/dashboard" onClick={() => setSidebarOpen(false)}><span className="nav-icon"><i className="fas fa-home"></i></span>Dashboard</Link>
-          <Link className={`nav-item${location.pathname === '/events' ? ' active' : ''}`} to="/events" onClick={() => setSidebarOpen(false)}><span className="nav-icon"><i className="fas fa-calendar-alt"></i></span>Events</Link>
-          <Link className={`nav-item${location.pathname === '/users' ? ' active' : ''}`} to="/users" onClick={() => setSidebarOpen(false)}><span className="nav-icon"><i className="fas fa-users"></i></span>Users</Link>
-          <Link className={`nav-item${location.pathname === '/bulk-qr-generator' ? ' active' : ''}`} to="/bulk-qr-generator" onClick={() => setSidebarOpen(false)}><span className="nav-icon"><i className="fas fa-th"></i></span>Bulk QR Generator</Link>
-
-        </nav>
-      </aside>
-      {/* Backdrop for mobile when sidebar is open */}
-      {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
-
-      <main className="main-content">
-        {onLogout && (
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+      {/* AppBar */}
+      {onLogout && (
+        <Box sx={{ position: 'fixed', top: 0, left: { xs: 0, md: `${drawerWidth}px` }, right: 0, zIndex: (theme) => theme.zIndex.drawer + 1 }}>
           <HeaderBar onLogout={onLogout} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
-        )}
-        <Outlet />
-      </main>
-    </div>
+        </Box>
+      )}
+
+      {/* Permanent drawer on md+ */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          width: drawerWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+          },
+        }}
+        open
+      >
+        {/* Add a toolbar spacer to offset AppBar height */}
+        <Toolbar />
+        {drawer}
+      </Drawer>
+
+      {/* Temporary drawer on xs-sm */}
+      <Drawer
+        variant="temporary"
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
+        }}
+      >
+        {drawer}
+      </Drawer>
+
+      {/* Main content */}
+      <Box component="main" sx={{ flexGrow: 1, minWidth: 0 }}>
+        <Toolbar />
+        <Box sx={{ p: 3 }}>
+          <Outlet />
+        </Box>
+      </Box>
+    </Box>
   );
 }
