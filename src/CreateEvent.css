@@ -482,18 +482,19 @@
   transform: translateY(-1px);
 }
 
+
 .submit-btn {
-  background: linear-gradient(135deg, #16233a 0%, #22325a 100%);
+  background-color: var(--royal-blue);
   color: white;
-  box-shadow: 0 4px 12px rgba(22, 35, 58, 0.2);
+  box-shadow: 0 6px 14px rgba(65,105,225,0.16);
   min-width: 140px;
   justify-content: center;
 }
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(22, 35, 58, 0.3);
-  background: linear-gradient(135deg, #22325a 0%, #2d3f6b 100%);
+  box-shadow: 0 10px 22px rgba(65,105,225,0.18);
+  background-color: var(--royal-blue-hover);
 }
 
 .submit-btn:disabled {

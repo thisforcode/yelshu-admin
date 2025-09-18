@@ -59,6 +59,8 @@ const Events = () => {
     }
   };
 
+  // Note: debounce removed — searches run only when user clicks Search or presses Enter
+
   const handleDelete = async (eventId) => {
     try {
       const eventService = createEventService(tenantId);
@@ -165,12 +167,16 @@ const Events = () => {
               placeholder="Search events..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  // prevent form submission / page refresh
+                  e.preventDefault();
+                  handleSearch();
+                }
+              }}
               className="search-input"
             />
-            <button onClick={handleSearch} className="search-btn">
-              Search
-            </button>
+            {/* Search button removed; users press Enter to run search */}
           </div>
         </div>
 
@@ -230,16 +236,24 @@ const Events = () => {
                       to={`/edit-event/${event.id}`}
                       className="link-btn"
                       title="Edit Event"
+                      aria-label="Edit event"
                     >
-                      <i className="fas fa-edit"></i>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                      </svg>
                     </Link>
                     {event.publicRegistrationId && (
                       <button
                         onClick={() => handleGenerateLink(event)}
                         className="link-btn"
                         title="Copy Public Link"
+                        aria-label="Copy public link"
                       >
-                        <i className="fas fa-link"></i>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-3 3" />
+                          <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l3-3" />
+                        </svg>
                       </button>
                     )}
                     <button
@@ -274,6 +288,18 @@ const Events = () => {
                         <span>End: {formatDate(event.endDate)}</span>
                       </div>
                     )}
+                    {event.registrationStart && (
+                      <div className="meta-item">
+                        <i className="fas fa-calendar-plus"></i>
+                        <span>Registration start: {formatDate(event.registrationStart)}</span>
+                      </div>
+                    )}
+                    {event.registrationEnd && (
+                      <div className="meta-item">
+                        <i className="fas fa-flag-checkered"></i>
+                        <span>Registration end: {formatDate(event.registrationEnd)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {event.location && (
@@ -293,7 +319,10 @@ const Events = () => {
                       padding: 10
                     }}>
                       <div style={{ fontWeight: 600, marginBottom: 8, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <i className="fas fa-link" style={{ color: '#2563eb' }}></i>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-3 3" />
+                          <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l3-3" />
+                        </svg>
                         Public Registration Link
                       </div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -308,6 +337,7 @@ const Events = () => {
                           type="button"
                           className="link-btn"
                           title="Copy Link"
+                          aria-label="Copy link"
                           onClick={async () => {
                             try {
                               const url = `${window.location.origin}/r/${tenantId}/${event.id}/${event.publicRegistrationId}`;
@@ -315,7 +345,10 @@ const Events = () => {
                             } catch {}
                           }}
                         >
-                          <i className="fas fa-copy"></i>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
                         </button>
                         <a
                           href={`${window.location.origin}/r/${tenantId}/${event.id}/${event.publicRegistrationId}`}
@@ -324,8 +357,13 @@ const Events = () => {
                           className="link-btn"
                           title="Open Link"
                           style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          aria-label="Open public link"
                         >
-                          <i className="fas fa-external-link-alt"></i>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
                         </a>
                       </div>
                     </div>

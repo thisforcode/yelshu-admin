@@ -1,12 +1,13 @@
 /* Events Page Styles */
 .events-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 28px 32px 24px 32px; /* align with .main-content spacing */
+  /* Use full available width while keeping comfortable inner padding */
+  width: 100%;
+  padding: 28px 40px 24px 40px; /* generous horizontal padding for large screens */
   background: #fff; /* match other pages' main content background */
   border-radius: 0;
-  margin: 16px 16px 16px 24px; /* match layout spacing used elsewhere */
+  margin: 16px 0; /* vertical spacing only - let parent layout control horizontal spacing */
   box-shadow: 0 2px 16px #0001;
+  box-sizing: border-box;
 }
 
 /* Header Section */
@@ -17,6 +18,7 @@
   margin-bottom: 32px;
   padding-bottom: 24px;
   border-bottom: 1px solid #e2e8f0;
+  gap: 24px;
 }
 
 .events-title-section {
@@ -45,7 +47,7 @@
 }
 
 .create-event-btn {
-  background: linear-gradient(135deg, #16233a 0%, #22325a 100%);
+  background-color: var(--royal-blue);
   color: white;
   text-decoration: none;
   padding: 14px 28px;
@@ -55,20 +57,21 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(22, 35, 58, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  box-shadow: 0 6px 14px rgba(65,105,225,0.16);
   border: none;
   cursor: pointer;
 }
 
 .create-event-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(22, 35, 58, 0.3);
-  background: linear-gradient(135deg, #22325a 0%, #2d3f6b 100%);
+  box-shadow: 0 10px 22px rgba(65,105,225,0.18);
+  background-color: var(--royal-blue-hover);
 }
 
 .create-event-btn:active {
   transform: translateY(0);
+  background-color: var(--royal-blue-active);
 }
 
 /* Controls Section */
@@ -77,6 +80,7 @@
   gap: 24px;
   margin-bottom: 32px;
   align-items: flex-end;
+  flex-wrap: wrap; /* allow controls to wrap on smaller widths */
 }
 
 .search-section {
@@ -96,6 +100,8 @@
   color: #94a3b8;
   font-size: 1.1rem;
   z-index: 1;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .search-input {
@@ -115,18 +121,18 @@
 }
 
 .search-btn {
-  background: #16233a;
+  background-color: var(--royal-blue);
   color: white;
   border: none;
   padding: 14px 20px;
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.12s ease, background-color 0.12s ease;
 }
 
 .search-btn:hover {
-  background: #22325a;
+  background-color: var(--royal-blue-hover);
   transform: translateY(-1px);
 }
 
@@ -191,9 +197,10 @@
 /* Events Grid */
 .events-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 24px;
   margin-bottom: 40px;
+  align-items: start;
 }
 
 /* Event Card */
@@ -234,10 +241,10 @@
 
 .event-card-header {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: flex-start;
-  margin-bottom: 16px;
-  gap: 16px;
+  margin-bottom: 12px;
+  gap: 8px;
 }
 
 .event-name {
@@ -253,7 +260,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
+  width: 100%;
+  flex-wrap: wrap;
 }
 
 .status-select {
@@ -366,7 +374,7 @@
 }
 
 .create-first-event-btn {
-  background: linear-gradient(135deg, #16233a 0%, #22325a 100%);
+  background-color: var(--royal-blue);
   color: white;
   text-decoration: none;
   padding: 14px 28px;
@@ -375,13 +383,14 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(22, 35, 58, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  box-shadow: 0 6px 14px rgba(65,105,225,0.16);
 }
 
 .create-first-event-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(22, 35, 58, 0.3);
+  box-shadow: 0 10px 22px rgba(65,105,225,0.18);
+  background-color: var(--royal-blue-hover);
 }
 
 /* Modal Styles */
@@ -397,6 +406,78 @@
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(4px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .events-container {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .events-title {
+    font-size: 2.1rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .events-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .create-event-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .events-controls {
+    align-items: stretch;
+  }
+
+  .search-section {
+    width: 100%;
+  }
+
+  .filter-section {
+    width: 180px;
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .events-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .events-title {
+    font-size: 1.6rem;
+    gap: 10px;
+  }
+
+  .events-controls {
+    gap: 12px;
+  }
+
+  .filter-section {
+    width: 100%;
+    order: 2;
+  }
+
+  .search-section {
+    order: 1;
+  }
+
+  .events-grid {
+    grid-template-columns: 1fr; /* single column list on small screens */
+    gap: 16px;
+  }
+
+  .event-card {
+    padding: 16px;
+  }
 }
 
 .confirm-modal {
@@ -477,6 +558,37 @@
   transform: translateY(-1px);
 }
 
+/* Icon-like buttons (edit, link, copy, external) - match delete button behavior but with royal blue */
+.link-btn {
+  background: #f8fafc;
+  color: var(--royal-blue);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+
+.link-btn i {
+  font-size: 0.95rem;
+}
+
+.link-btn:hover {
+  background: var(--royal-blue);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.link-btn:active {
+  transform: translateY(0);
+  background: var(--royal-blue-active);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .events-header {
@@ -491,13 +603,20 @@
   }
   
   .search-container {
-    flex-direction: column;
-    align-items: stretch;
+    /* keep input and button inline on tablet/smaller screens to avoid large vertical gaps */
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
   
   .search-btn {
     align-self: center;
     min-width: 120px;
+  }
+
+  .search-container .search-input {
+    padding-left: 44px; /* room for centered icon while keeping compact layout */
   }
   
   .events-grid {

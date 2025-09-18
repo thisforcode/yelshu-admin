@@ -11,3 +11,80 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Global button styles to match the Material theme (royal blue) */
+:root {
+  --royal-blue: #4169E1;
+  --royal-blue-hover: #355fc1;
+  --royal-blue-active: #2d4fb0;
+  --royal-blue-opaque: rgba(65,105,225,0.04);
+}
+
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+.btn,
+.button {
+  background-color: var(--royal-blue);
+  color: #ffffff;
+  border: 1px solid var(--royal-blue);
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+  text-align: center;
+}
+
+button:hover,
+input[type="button"]:hover,
+input[type="submit"]:hover,
+input[type="reset"]:hover,
+.btn:hover,
+.button:hover {
+  background-color: var(--royal-blue-hover);
+  border-color: var(--royal-blue-hover);
+}
+
+button:active,
+input[type="button"]:active,
+input[type="submit"]:active,
+input[type="reset"]:active,
+.btn:active,
+.button:active {
+  background-color: var(--royal-blue-active);
+  border-color: var(--royal-blue-active);
+}
+
+button:disabled,
+input[disabled],
+button[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Accessible focus style */
+button:focus,
+input[type="button"]:focus,
+input[type="submit"]:focus,
+input[type="reset"]:focus,
+.btn:focus,
+.button:focus {
+  outline: 3px solid rgba(65,105,225,0.2);
+  outline-offset: 2px;
+}
+
+/* Outlined variant helper: add class .btn-outline */
+.btn-outline,
+.button-outline {
+  background-color: transparent;
+  color: var(--royal-blue);
+  border: 1px solid var(--royal-blue);
+}
+
+.btn-outline:hover,
+.button-outline:hover {
+  background-color: var(--royal-blue-opaque);
+}
+

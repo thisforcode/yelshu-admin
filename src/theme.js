@@ -5,7 +5,7 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1e40af', // deep blue
+      main: '#4169E1', // royal blue
       contrastText: '#ffffff',
     },
     secondary: {
@@ -69,6 +69,27 @@ const theme = createTheme({
         },
         containedPrimary: {
           color: '#ffffff',
+          backgroundColor: '#4169E1',
+          '&:hover': {
+            backgroundColor: '#355fc1',
+          },
+          '&:active': {
+            backgroundColor: '#2d4fb0',
+          },
+        },
+        outlinedPrimary: {
+          color: '#4169E1',
+          borderColor: '#4169E1',
+          '&:hover': {
+            backgroundColor: 'rgba(65,105,225,0.04)',
+            borderColor: '#355fc1',
+          },
+        },
+        textPrimary: {
+          color: '#4169E1',
+          '&:hover': {
+            backgroundColor: 'rgba(65,105,225,0.04)',
+          },
         },
       },
     },
