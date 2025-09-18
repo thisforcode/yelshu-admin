@@ -426,14 +426,23 @@ export default function Users() {
             ) : (
               usersData.map((user, idx) => (
                 <tr key={user.id || idx}>
-                  <td>{user.name}</td>
-                  <td>{user.email}</td>
-                  <td>{user.mobile}</td>
-                  <td>{user.guestType}</td>
-                  <td className="users-actions-icons">
-                    <span className="icon edit" title="Edit" onClick={() => handleEditUserClick(user)}>✏️</span>
-                    <span className="icon qr" title="QR" onClick={() => handleShowQR(user.id)} style={{ cursor: 'pointer' }}>#️⃣</span>
-                    <span className="icon delete" title="Delete" onClick={() => handleDeleteUser(user.id)}>🗑️</span>
+                  <td data-label="Name">{user.name}</td>
+                  <td data-label="Email">{user.email}</td>
+                  <td data-label="Mobile">{user.mobile}</td>
+                  <td data-label="Guest Type">{user.guestType}</td>
+                  <td data-label="Actions" className="users-actions-icons">
+                    <button type="button" className="icon-btn" title="Edit" onClick={() => handleEditUserClick(user)}>
+                      <span className="material-icons" aria-hidden>edit</span>
+                      <span className="sr-only">Edit</span>
+                    </button>
+                    <button type="button" className="icon-btn" title="QR Code" onClick={() => handleShowQR(user.id)}>
+                      <span className="material-icons" aria-hidden>qr_code_2</span>
+                      <span className="sr-only">QR</span>
+                    </button>
+                    <button type="button" className="icon-btn danger" title="Delete" onClick={() => handleDeleteUser(user.id)}>
+                      <span className="material-icons" aria-hidden>delete</span>
+                      <span className="sr-only">Delete</span>
+                    </button>
                   </td>
                 </tr>
               ))
@@ -441,15 +450,15 @@ export default function Users() {
           </tbody>
         </table>
         <div className="users-pagination" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
-          <div>
+          <div className="users-pagination-count">
             {totalCount > 0 ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalCount)} of ${totalCount}` : '0–0 of 0'}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1 || loading}>Prev</button>
+          <div className="users-pagination-controls" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button className="users-page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1 || loading}>Prev</button>
             <span>Page {page}</span>
-            <button onClick={() => setPage(p => (p * pageSize < totalCount ? p + 1 : p))} disabled={page * pageSize >= totalCount || loading}>Next</button>
-            <span style={{ marginLeft: 16 }}>Rows per page:</span>
-            <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} disabled={loading}>
+            <button className="users-page-btn" onClick={() => setPage(p => (p * pageSize < totalCount ? p + 1 : p))} disabled={page * pageSize >= totalCount || loading}>Next</button>
+            <span className="users-rows-label" style={{ marginLeft: 16 }}>Rows per page:</span>
+            <select className="users-rows-select" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} disabled={loading}>
               {[5, 10, 20, 50].map(sz => <option key={sz} value={sz}>{sz}</option>)}
             </select>
           </div>

@@ -2,7 +2,11 @@
 .events-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0;
+  padding: 28px 32px 24px 32px; /* align with .main-content spacing */
+  background: #fff; /* match other pages' main content background */
+  border-radius: 0;
+  margin: 16px 16px 16px 24px; /* match layout spacing used elsewhere */
+  box-shadow: 0 2px 16px #0001;
 }
 
 /* Header Section */
@@ -332,10 +336,11 @@
 /* No Events State */
 .no-events {
   text-align: center;
-  padding: 80px 40px;
-  background: #f8fafc;
+  padding: 48px 40px;
+  background: #fcfcfd; /* subtle off-white used in dashboard sections */
   border-radius: 16px;
-  border: 2px dashed #cbd5e1;
+  border: 1.5px solid #ececec; /* match card borders used elsewhere */
+  box-shadow: 0 2px 12px 0 rgba(16,30,54,0.07);
 }
 
 .no-events-icon {
