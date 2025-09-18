@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import './SidebarLayout.css';
 import logo from './assets/logo.jpeg';
-import EventSelector from './EventSelector';
+import HeaderBar from './HeaderBar';
 
 export default function SidebarLayout({ onLogout }) {
   const location = useLocation();
@@ -23,10 +23,7 @@ export default function SidebarLayout({ onLogout }) {
       </aside>
       <main className="main-content">
         {onLogout && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <EventSelector />
-            <button onClick={onLogout} style={{ background: '#22325a', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', fontSize: 16, fontWeight: 500, cursor: 'pointer', boxShadow: '0 2px 8px #0001' }}>Logout</button>
-          </div>
+          <HeaderBar onLogout={onLogout} />
         )}
         <Outlet />
       </main>

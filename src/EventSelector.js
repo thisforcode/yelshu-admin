@@ -121,16 +121,7 @@ const EventSelector = () => {
 
   return (
     <div className="event-selector-container">
-      <div className="event-selector-label">
-        <span>Current Event:</span>
-        {selectedEvent && (
-          <div className="event-selected">
-            <div className="event-selected-name">{selectedEvent.name}</div>
-            <div className="event-selected-date">{fmt(selectedEvent.startDate)} — {fmt(selectedEvent.endDate)}</div>
-          </div>
-        )}
-      </div>
-
+      {/* Dropdown first */}
       <div className={`event-dropdown ${open ? 'open' : ''}`} onClick={() => setOpen(!open)} role="button" tabIndex={0}>
         <div className="event-dropdown-toggle">
           {selectedEvent ? selectedEvent.name : `Select an event (${events.length} available)`}
@@ -145,6 +136,17 @@ const EventSelector = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Then current event information */}
+      <div className="event-selector-label">
+        <span>Current Event:</span>
+        {selectedEvent && (
+          <div className="event-selected">
+            <div className="event-selected-name">{selectedEvent.name}</div>
+            <div className="event-selected-date">{fmt(selectedEvent.startDate)} — {fmt(selectedEvent.endDate)}</div>
+          </div>
+        )}
       </div>
 
       {selectedEvent && (
