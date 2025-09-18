@@ -137,3 +137,29 @@
   background-color: #f1f3f4;
   color: #5f6368;
 }
+
+/* Responsive tweaks */
+@media (max-width: 960px) {
+  .event-selector-container {
+    padding: 6px 8px;
+    gap: 8px;
+    background: transparent;
+  }
+  .event-selector-label { display: none; }
+  .event-dropdown { min-width: 180px; }
+}
+
+@media (max-width: 640px) {
+  .event-selector-container {
+    flex-wrap: wrap;
+    width: 100%;
+    margin-right: 0;
+    padding: 0;
+  }
+  .event-dropdown {
+    width: 100%;
+    min-width: 0;
+  }
+  .event-selector-info { width: 100%; justify-content: flex-start; }
+  .event-selected { display: block; margin-left: 0; }
+}

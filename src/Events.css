@@ -511,3 +511,10 @@
     justify-content: space-between;
   }
 }
+
+@media (max-width: 640px) {
+  .events-container { padding: 0 12px; }
+  .events-title { font-size: 2rem; gap: 12px; }
+  .search-input { width: 100%; box-sizing: border-box; }
+  .filter-section { width: 100%; min-width: 0; }
+}

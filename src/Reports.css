@@ -246,3 +246,15 @@
   background-color: #ccc;
   cursor: not-allowed;
 }
+
+/* Responsive */
+@media (max-width: 960px) {
+  .tile-row { flex-wrap: wrap; }
+  .tile { flex: 1 1 220px; min-width: 0; }
+}
+
+/* Table wrapper for horizontal scroll in narrow screens */
+.users-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}

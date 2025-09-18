@@ -3,7 +3,7 @@ import EventSelector from './EventSelector';
 import { useTenant } from './TenantContext';
 import './HeaderBar.css';
 
-export default function HeaderBar({ onLogout }) {
+export default function HeaderBar({ onLogout, onToggleSidebar }) {
   const { currentUser } = useTenant();
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
@@ -29,6 +29,11 @@ export default function HeaderBar({ onLogout }) {
   return (
     <div className="header-bar">
       <div className="header-left">
+        {typeof onToggleSidebar === 'function' && (
+          <button className="hamburger-btn" aria-label="Toggle sidebar" onClick={onToggleSidebar}>
+            <i className="fas fa-bars" />
+          </button>
+        )}
         <EventSelector />
       </div>
       <div className="header-right">

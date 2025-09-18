@@ -341,3 +341,16 @@
 .users-modal-actions button[type="submit"]:hover {
   background: #1d4ed8;
 }
+
+/* Responsive */
+@media (max-width: 960px) {
+  .users-container { margin: 16px; padding: 16px; border-radius: 12px; }
+  .users-header-row { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .users-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+}
+
+@media (max-width: 640px) {
+  .users-title { font-size: 1.8rem; }
+  .users-modal { min-width: 0; width: 92vw; max-width: 92vw; padding: 20px; }
+  .users-table th, .users-table td { padding: 12px 10px; }
+}

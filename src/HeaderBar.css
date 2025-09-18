@@ -117,3 +117,26 @@
     display: none;
   }
 }
+
+/* Mobile hamburger button */
+.hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  margin-right: 8px;
+}
+.hamburger-btn i {
+  font-size: 18px;
+  color: #22325a;
+}
+.hamburger-btn:active { transform: scale(0.98); }
+
+@media (max-width: 960px) {
+  .header-left { gap: 8px; }
+  .hamburger-btn { display: inline-flex; }
+}
